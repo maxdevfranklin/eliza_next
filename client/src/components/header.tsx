@@ -39,7 +39,6 @@ export function Header() {
         onClick={() => setMobileMenuOpen(false)}
       >
         Docs
-        <ArrowTopRightOnSquareIcon className="h-3 w-3" />
       </a>
       <a
         href="https://twitter.com/elizaos"
@@ -54,20 +53,6 @@ export function Header() {
         onClick={() => setMobileMenuOpen(false)}
       >
         <XIcon className="h-4 w-4" />
-      </a>
-      <a
-        href="https://t.me/eliza_builders"
-        target="_blank"
-        rel="noopener noreferrer"
-        className={clsx(
-          'text-sm font-medium flex items-center',
-          mobile
-            ? '-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900'
-            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white'
-        )}
-        onClick={() => setMobileMenuOpen(false)}
-      >
-        <TelegramIcon className="h-5 w-5" />
       </a>
       <a
         href="https://discord.gg/elizaos"

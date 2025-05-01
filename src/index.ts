@@ -181,89 +181,96 @@ const character: Partial<Character> = {
 
 const devRel = {
   character,
-  init: async (runtime: IAgentRuntime) => {
-    const repoDirName = 'elizaos';
-    const workspaceRoot = path.resolve(__dirname, '../../..');
-    const repoPath = path.join(workspaceRoot, repoDirName);
-    const repoUrl = 'https://github.com/elizaos/eliza.git';
-    const branch = 'v2-develop';
+  plugins: [{
+    name: 'eliza.how',
+    init: async (config, runtime: IAgentRuntime) => {
+      console.log("*** Initializing agent...");
+      const repoDirName = 'elizaos';
+      const workspaceRoot = path.resolve(__dirname, '..');
+      const repoPath = path.join(workspaceRoot, repoDirName);
+      const repoUrl = 'https://github.com/elizaos/eliza.git';
+      const branch = 'v2-develop';
 
-    logger.info(`Checking for ElizaOS repository at: ${repoPath}`);
+      console.log("runtime", runtime)
 
-    try {
-      if (!fs.existsSync(repoPath)) {
-        logger.info(`Repository not found. Cloning ${branch} branch from ${repoUrl}...`);
-        execSync(`git clone --depth 1 --branch ${branch} ${repoUrl} ${repoDirName}`, {
-          cwd: workspaceRoot,
-          stdio: 'inherit',
-        });
-        logger.info('Repository cloned successfully.');
-      } else {
-        logger.info('Repository found. Checking out branch and pulling latest changes...');
-        try {
-          execSync(`git checkout ${branch}`, { cwd: repoPath, stdio: 'inherit' });
-        } catch (checkoutError) {
-          logger.warn(`Failed to checkout ${branch} (maybe already on it or stash needed?), attempting pull anyway: ${checkoutError}`);
-        }
-        try {
-          execSync(`git pull origin ${branch}`, { cwd: repoPath, stdio: 'inherit' });
-          logger.info(`Pulled latest changes from origin/${branch}.`);
-        } catch (pullError) {
-            logger.error(`Failed to pull changes for ${branch}: ${pullError}. Continuing with local version.`);
-        }
-      }
+      logger.info(`Checking for ElizaOS repository at: ${repoPath}`);
 
-      const docsPath = path.join(repoPath, 'packages', 'docs', 'docs');
-      logger.info(`Attempting to load documentation from: ${docsPath}`);
-
-      if (fs.existsSync(docsPath)) {
-        logger.debug('Loading documentation...');
-        const docKnowledge = loadDocumentation(docsPath);
-        if (docKnowledge.length > 0) {
-            logger.info(`Loaded ${docKnowledge.length} documentation files. Adding to knowledge base...`);
-            let addedCount = 0;
-            for (const docContent of docKnowledge) {
-                const knowledgeItem: KnowledgeItem = {
-                    id: uuidv4() as UUID,
-                    content: { text: docContent },
-                    metadata: {
-                        type: MemoryType.DOCUMENT,
-                        source: 'dynamic-docs',
-                        timestamp: Date.now()
-                    }
-                };
-                try {
-                    const defaultKnowledgeOptions = {
-                        targetTokens: 1500,
-                        overlap: 200,
-                        modelContextSize: 4096,
-                    };
-                    await runtime.addKnowledge(knowledgeItem, defaultKnowledgeOptions, {
-                        roomId: runtime.agentId,
-                        entityId: runtime.agentId
-                    });
-                    addedCount++;
-                } catch (addError) {
-                    logger.error(`Failed to add knowledge item: ${addError}`);
-                }
-            }
-            logger.info(`Successfully added ${addedCount}/${docKnowledge.length} documentation files to knowledge base.`);
+      try {
+        if (!fs.existsSync(repoPath)) {
+          logger.info(`Repository not found. Cloning ${branch} branch from ${repoUrl}...`);
+          execSync(`git clone --depth 1 --branch ${branch} ${repoUrl} ${repoDirName}`, {
+            cwd: workspaceRoot,
+            stdio: 'inherit',
+          });
+          logger.info('Repository cloned successfully.');
         } else {
-            logger.warn(`No documentation files found or loaded from ${docsPath}.`);
+          logger.info('Repository found. Checking out branch and pulling latest changes...');
+          try {
+            execSync(`git checkout ${branch}`, { cwd: repoPath, stdio: 'inherit' });
+          } catch (checkoutError) {
+            logger.warn(`Failed to checkout ${branch} (maybe already on it or stash needed?), attempting pull anyway: ${checkoutError}`);
+          }
+          try {
+            execSync(`git pull origin ${branch}`, { cwd: repoPath, stdio: 'inherit' });
+            logger.info(`Pulled latest changes from origin/${branch}.`);
+          } catch (pullError) {
+              logger.error(`Failed to pull changes for ${branch}: ${pullError}. Continuing with local version.`);
+          }
         }
-      } else {
-        logger.warn(`Documentation directory not found: ${docsPath}. Cannot load documentation knowledge.`);
+
+        const docsPath = path.join(repoPath, 'packages', 'docs', 'docs');
+        logger.info(`Attempting to load documentation from: ${docsPath}`);
+
+        if (fs.existsSync(docsPath)) {
+          logger.debug('Loading documentation...');
+          const docKnowledge = loadDocumentation(docsPath);
+          if (docKnowledge.length > 0) {
+              logger.info(`Loaded ${docKnowledge.length} documentation files. Adding to knowledge base...`);
+              let addedCount = 0;
+              for (const docContent of docKnowledge) {
+                  const knowledgeItem: KnowledgeItem = {
+                      id: uuidv4() as UUID,
+                      content: { text: docContent },
+                      metadata: {
+                          type: MemoryType.DOCUMENT,
+                          source: 'dynamic-docs',
+                          timestamp: Date.now()
+                      }
+                  };
+                  try {
+                      const defaultKnowledgeOptions = {
+                          targetTokens: 1500,
+                          overlap: 200,
+                          modelContextSize: 4096,
+                      };
+
+                      await runtime.addKnowledge(knowledgeItem, defaultKnowledgeOptions, {
+                          roomId: runtime.agentId,
+                          entityId: runtime.agentId
+                      });
+                      addedCount++;
+                  } catch (addError) {
+                      logger.error(`Failed to add knowledge item: ${addError}`);
+                  }
+              }
+              logger.info(`Successfully added ${addedCount}/${docKnowledge.length} documentation files to knowledge base.`);
+          } else {
+              logger.warn(`No documentation files found or loaded from ${docsPath}.`);
+          }
+        } else {
+          logger.warn(`Documentation directory not found: ${docsPath}. Cannot load documentation knowledge.`);
+        }
+
+      } catch (error) {
+        logger.error(`Failed to clone or update repository: ${error}`);
+        logger.warn('Proceeding without loading documentation knowledge due to repository error.');
       }
 
-    } catch (error) {
-      logger.error(`Failed to clone or update repository: ${error}`);
-      logger.warn('Proceeding without loading documentation knowledge due to repository error.');
-    }
-
-    logger.info('Initializing character...');
-    await initCharacter({ runtime });
-    logger.info('Character initialized.');
-  },
+      logger.info('Initializing character...');
+      await initCharacter({ runtime });
+      logger.info('Character initialized.');
+    },
+}]
 };
 
 /**
