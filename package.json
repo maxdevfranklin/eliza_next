@@ -87,7 +87,7 @@
     "typescript": "^5"
   },
   "scripts": {
-    "start": "elizaos start",
+    "start": "concurrently \"elizaos start\" \"next start -p 4000\"",
     "dev": "concurrently \"elizaos dev\" \"next dev -p 4000\"",
     "build": "tsup && next build",
     "lint": "prettier --write ./src",
