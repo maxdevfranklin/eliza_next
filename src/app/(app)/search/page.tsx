@@ -1,6 +1,6 @@
-import { Suspense } from 'react';
+import { Suspense } from "react";
 
-import { Chat } from '@/components/chat';
+import { Chat } from "@/components/chat";
 
 export default function Page() {
   return (

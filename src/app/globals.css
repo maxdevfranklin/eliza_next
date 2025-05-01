@@ -1,11 +1,11 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-.prose :where(pre):not(:where([class~='not-prose'], [class~='not-prose'] *)) {
+.prose :where(pre):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
   @apply !px-0 !py-0;
 }
 
-.prose :where(pre):not(:where([class~='not-prose'], [class~='not-prose'] *)) {
+.prose :where(pre):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
   @apply !bg-transparent;
 }
 

@@ -1,8 +1,8 @@
-import Markdown from 'markdown-to-jsx';
-import { Metadata } from 'next';
+import Markdown from "markdown-to-jsx";
+import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'Eliza.how - Terms of Service',
+  title: "Eliza.how - Terms of Service",
 };
 
 export default function Page() {

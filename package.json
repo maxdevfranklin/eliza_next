@@ -4,15 +4,15 @@
   "version": "1.0.0-beta.41",
   "type": "module",
   "private": true,
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/agent.js",
+  "module": "dist/agent.js",
+  "types": "dist/agent.d.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
       "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+        "types": "./dist/agent.d.ts",
+        "default": "./dist/agent.js"
       }
     }
   },
@@ -20,13 +20,6 @@
     "dist"
   ],
   "dependencies": {
-    "@elizaos/cli": "1.0.0-beta.41",
-    "@elizaos/core": "1.0.0-beta.41",
-    "@elizaos/plugin-anthropic": "1.0.0-beta.41",
-    "@elizaos/plugin-bootstrap": "1.0.0-beta.41",
-    "@elizaos/plugin-openai": "1.0.0-beta.41",
-    "@elizaos/plugin-sql": "1.0.0-beta.41",
-    "@elizaos/plugin-telegram": "1.0.0-beta.41",
     "@babel/runtime": "^7.26.0",
     "@codemirror/autocomplete": "^6.18.3",
     "@codemirror/lang-css": "^6.3.1",
@@ -38,6 +31,13 @@
     "@codemirror/legacy-modes": "^6.4.2",
     "@codemirror/state": "^6.5.0",
     "@codemirror/view": "^6.35.3",
+    "@elizaos/cli": "1.0.0-beta.41",
+    "@elizaos/core": "1.0.0-beta.41",
+    "@elizaos/plugin-anthropic": "1.0.0-beta.41",
+    "@elizaos/plugin-groq": "1.0.0-beta.41",
+    "@elizaos/plugin-openai": "1.0.0-beta.41",
+    "@elizaos/plugin-sql": "1.0.0-beta.41",
+    "@elizaos/plugin-telegram": "1.0.0-beta.41",
     "@hapi/shot": "^6.0.1",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
@@ -47,6 +47,7 @@
     "@uiw/codemirror-theme-github": "4.21.19",
     "clsx": "^2.1.1",
     "codemirror": "^6.0.1",
+    "concurrently": "^9.1.2",
     "date-fns": "^4.1.0",
     "eslint-plugin-path-alias": "^2.1.0",
     "eslint-plugin-tailwindcss": "^3.17.5",
@@ -64,7 +65,6 @@
     "socket.io-client": "^4.8.1",
     "sonner": "^1.7.1",
     "uuid": "^11.1.0",
-    "concurrently": "^9.1.2",
     "zod": "3.24.2"
   },
   "devDependencies": {

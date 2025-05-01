@@ -1,13 +1,8 @@
-import React from 'react';
+import React from "react";
 
 export function TelegramIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg
-      viewBox="4 4 16 16"
-      fill="none"
-      aria-hidden="true"
-      {...props}
-    >
+    <svg viewBox="4 4 16 16" fill="none" aria-hidden="true" {...props}>
       <path
         fillRule="evenodd"
         clipRule="evenodd"
@@ -16,4 +11,4 @@ export function TelegramIcon(props: React.SVGProps<SVGSVGElement>) {
       />
     </svg>
   );
-} 
+}

@@ -1,14 +1,14 @@
-import { sha1 } from 'js-sha1'; // Need to add js-sha1 dependency
+import { sha1 } from "js-sha1"; // Need to add js-sha1 dependency
 
 /**
  * Converts a Uint8Array to a hexadecimal string.
  */
 const uint8ArrayToHex = (buf: Uint8Array): string => {
-  let out = '';
+  let out = "";
   for (let i = 0; i < buf.length; i++) {
     let h = buf[i].toString(16);
     if (h.length < 2) {
-      h = '0' + h;
+      h = "0" + h;
     }
     out += h;
   }
@@ -22,8 +22,8 @@ const uint8ArrayToHex = (buf: Uint8Array): string => {
  * @returns {string} The generated UUID string.
  */
 export function generateUUIDFromString(inputString: string): string {
-  if (typeof inputString !== 'string') {
-    throw new TypeError('Value must be a string');
+  if (typeof inputString !== "string") {
+    throw new TypeError("Value must be a string");
   }
 
   // Get SHA-1 hash bytes

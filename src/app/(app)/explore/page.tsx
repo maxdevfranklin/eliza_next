@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import clsx from 'clsx';
-import { useRouter } from 'next/navigation';
+import clsx from "clsx";
+import { useRouter } from "next/navigation";
 
 interface Category {
   title: string;
@@ -11,43 +11,43 @@ interface Category {
 
 const categories: Category[] = [
   {
-    title: 'Setup & Installation',
-    description: 'Get help with initial setup and configuration',
+    title: "Setup & Installation",
+    description: "Get help with initial setup and configuration",
     prompts: [
-      'How to properly set up the .env file?',
-      'What Node.js version should I use?',
-      'How to resolve pnpm build errors?',
-      'How to set up social media integration?',
+      "How to properly set up the .env file?",
+      "What Node.js version should I use?",
+      "How to resolve pnpm build errors?",
+      "How to set up social media integration?",
     ],
   },
   {
-    title: 'Agent Configuration',
-    description: 'Learn how to configure and customize your agent',
+    title: "Agent Configuration",
+    description: "Learn how to configure and customize your agent",
     prompts: [
-      'How to configure bot responses?',
-      'How to control tweet frequency?',
-      'How to manage agent memory?',
-      'How to implement custom actions?',
+      "How to configure bot responses?",
+      "How to control tweet frequency?",
+      "How to manage agent memory?",
+      "How to implement custom actions?",
     ],
   },
   {
-    title: 'API & Models',
-    description: 'Understand AI models and API integration',
+    title: "API & Models",
+    description: "Understand AI models and API integration",
     prompts: [
-      'Which AI models are recommended?',
-      'How to handle API keys and rate limits?',
-      'How to switch between model providers?',
-      'What are the costs for different models?',
+      "Which AI models are recommended?",
+      "How to handle API keys and rate limits?",
+      "How to switch between model providers?",
+      "What are the costs for different models?",
     ],
   },
   {
-    title: 'Development',
-    description: 'Resources for developers and contributors',
+    title: "Development",
+    description: "Resources for developers and contributors",
     prompts: [
-      'How to implement new features?',
-      'Where to find documentation?',
-      'How to handle database issues?',
-      'Best practices for contributing?',
+      "How to implement new features?",
+      "Where to find documentation?",
+      "How to handle database issues?",
+      "Best practices for contributing?",
     ],
   },
 ];
@@ -67,14 +67,16 @@ export default function Page() {
           <div
             key={category.title}
             className={clsx([
-              'p-5 rounded-lg',
-              'border border-zinc-200 dark:border-zinc-800',
-              'bg-white dark:bg-zinc-900',
+              "p-5 rounded-lg",
+              "border border-zinc-200 dark:border-zinc-800",
+              "bg-white dark:bg-zinc-900",
             ])}
           >
             <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4 mb-2">
               <h2 className="text-xl font-semibold mb-2">{category.title}</h2>
-              <p className="text-zinc-600 dark:text-zinc-400 text-sm">{category.description}</p>
+              <p className="text-zinc-600 dark:text-zinc-400 text-sm">
+                {category.description}
+              </p>
             </div>
             <div className="space-y-2">
               {category.prompts.map((prompt) => (
@@ -82,10 +84,10 @@ export default function Page() {
                   key={prompt}
                   onClick={() => handlePromptSelect(prompt)}
                   className={clsx([
-                    'w-full text-left py-2 rounded-lg cursor-pointer',
-                    'text-sm',
-                    'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white',
-                    'transition-colors',
+                    "w-full text-left py-2 rounded-lg cursor-pointer",
+                    "text-sm",
+                    "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white",
+                    "transition-colors",
                   ])}
                 >
                   {prompt}

@@ -1,17 +1,17 @@
-import type { Metadata, Viewport } from 'next';
-import { ThemeProvider } from 'next-themes';
+import type { Metadata, Viewport } from "next";
+import { ThemeProvider } from "next-themes";
 
-import { siteConfig } from '@/app/constants';
-import { inter } from '@/app/fonts';
-import '@/app/globals.css';
-import { ProgressBar } from '@/app/progress-bar';
-import { Toaster } from '@/app/toaster';
-import { Header } from '@/components/header';
+import { siteConfig } from "@/app/constants";
+import { inter } from "@/app/fonts";
+import "@/app/globals.css";
+import { ProgressBar } from "@/app/progress-bar";
+import { Toaster } from "@/app/toaster";
+import { Header } from "@/components/header";
 
 export const viewport: Viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
-  themeColor: 'white',
+  themeColor: "white",
 };
 
 export const metadata: Metadata = {
@@ -20,18 +20,18 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   openGraph: {
     siteName: siteConfig.name,
-    title: 'The Documentation for Eliza',
+    title: "The Documentation for Eliza",
     description: siteConfig.description,
     images: [siteConfig.ogImage],
-    type: 'website',
+    type: "website",
     url: siteConfig.url,
-    locale: 'en_US',
+    locale: "en_US",
   },
   icons: siteConfig.icons,
   twitter: {
-    card: 'summary_large_image',
+    card: "summary_large_image",
     site: siteConfig.name,
-    title: 'The Documentation for Eliza',
+    title: "The Documentation for Eliza",
     description: siteConfig.description,
     images: [siteConfig.ogImage],
     creator: siteConfig.creator,

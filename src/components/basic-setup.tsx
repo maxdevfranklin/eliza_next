@@ -1,5 +1,9 @@
-import { closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import {
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+} from "@codemirror/autocomplete";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import {
   bracketMatching,
   defaultHighlightStyle,
@@ -7,10 +11,10 @@ import {
   foldKeymap,
   indentOnInput,
   syntaxHighlighting,
-} from '@codemirror/language';
-import { lintKeymap } from '@codemirror/lint';
-import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
-import { EditorState, Extension } from '@codemirror/state';
+} from "@codemirror/language";
+import { lintKeymap } from "@codemirror/lint";
+import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import { EditorState, Extension } from "@codemirror/state";
 import {
   crosshairCursor,
   drawSelection,
@@ -21,7 +25,7 @@ import {
   keymap,
   lineNumbers,
   rectangularSelection,
-} from '@codemirror/view';
+} from "@codemirror/view";
 
 // (The superfluous function calls around the list of extensions work
 // around current limitations in tree-shaking software.)
@@ -104,4 +108,4 @@ export const minimalSetup: Extension = (() => [
   keymap.of([...defaultKeymap, ...historyKeymap]),
 ])();
 
-export { EditorView } from '@codemirror/view';
+export { EditorView } from "@codemirror/view";

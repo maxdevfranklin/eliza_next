@@ -1,7 +1,7 @@
-import { Suspense } from 'react';
+import { Suspense } from "react";
 
-import { Footer } from '@/components/footer';
-import { LandingTextarea } from '@/components/landing-textarea';
+import { Footer } from "@/components/footer";
+import { LandingTextarea } from "@/components/landing-textarea";
 
 export default function Page() {
   return (
