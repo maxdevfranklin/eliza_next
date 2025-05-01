@@ -1,5 +1,5 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript", "plugin:tailwindcss/recommended"],
+  "extends": ["next/core-web-vitals", "next/typescript"],
   "rules": {
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-require-imports": "off",
@@ -12,7 +12,7 @@
     "import/order": "off",
     "@typescript-eslint/no-unused-vars": "warn"
   },
-  "ignorePatterns": ["src/templates/files/**/*"],
+  "ignorePatterns": ["src/templates/files/**/*", "elizaos/**/*"],
   "plugins": ["path-alias"],
   "settings": {
     "import/resolver": {

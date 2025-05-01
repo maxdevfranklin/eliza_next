@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
     config.plugins.push(
       new webpack.IgnorePlugin({
         resourceRegExp: /^pg-native$|^cloudflare:sockets$/,
+      }),
+      // Ignore the elizaos directory using checkResource
+      new webpack.IgnorePlugin({
+        checkResource(resource, context) {
+          // Ignore anything within the elizaos directory
+          return /elizaos\//.test(context);
+        },
       })
     );
     // Return modified config
