@@ -15,7 +15,7 @@ export const siteConfig = {
     {
       rel: 'icon',
       type: 'image/png',
-      url: '/eliza-white.png',
+      url: '/favicon.ico',
       media: '(prefers-color-scheme: dark)',
     },
   ],
