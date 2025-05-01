@@ -185,11 +185,11 @@ const devRel = {
     name: 'eliza.how',
     init: async (config, runtime: IAgentRuntime) => {
       console.log("*** Initializing agent...");
-      const repoDirName = 'elizaos';
+      const repoDirName = process.env.REPO_DIR_NAME || 'elizaos';
       const workspaceRoot = path.resolve(__dirname, '..');
       const repoPath = path.join(workspaceRoot, repoDirName);
-      const repoUrl = 'https://github.com/elizaos/eliza.git';
-      const branch = 'v2-develop';
+      const repoUrl = process.env.REPO_URL || 'https://github.com/elizaos/eliza.git';
+      const branch = process.env.REPO_BRANCH || 'v2-develop';
 
       console.log("runtime", runtime)
 
