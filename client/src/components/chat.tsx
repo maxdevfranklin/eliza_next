@@ -143,7 +143,7 @@ export const Chat = () => {
     }
     initStartedRef.current = true;
 
-    const agent = process.env.NEXT_PUBLIC_AGENT_ID || "1ee9e4ad-f1a9-0946-8498-edce550b222c";
+    const agent = process.env.NEXT_PUBLIC_AGENT_ID || "2ed1ddb3-67d2-09c9-9eed-c7791ee7bb54";
     const world = process.env.NEXT_PUBLIC_WORLD_ID || "00000000-0000-0000-0000-000000000000";
     if (!agent || !world) {
       console.error('[Chat Init] Missing required environment variables.');

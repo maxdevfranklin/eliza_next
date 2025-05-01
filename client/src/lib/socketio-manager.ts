@@ -1,8 +1,16 @@
 import { USER_NAME } from '@/constants';
-import { SOCKET_MESSAGE_TYPE } from '@elizaos/core';
 import { Evt } from 'evt';
 import { io, type Socket } from 'socket.io-client';
 import { v4 } from 'uuid';
+
+enum SOCKET_MESSAGE_TYPE {
+  ROOM_JOINING = 1,
+  SEND_MESSAGE = 2,
+  MESSAGE = 3,
+  ACK = 4,
+  THINKING = 5,
+  CONTROL = 6
+}
 
 const API_PREFIX = (process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000') + '/'; // Assuming backend is proxied or on same origin
 

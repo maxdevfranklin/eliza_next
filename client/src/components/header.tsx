@@ -7,6 +7,7 @@ import { useState } from 'react';
 
 import { Dialog } from '@/components/dialog';
 import { Logo } from '@/components/logo';
+import { XIcon, TelegramIcon, DiscordIcon } from '@/components/icons';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -30,10 +31,10 @@ export function Header() {
         target="_blank"
         rel="noopener noreferrer"
         className={clsx(
-          'text-sm font-medium flex items-center gap-1',
+          'text-sm font-medium flex items-center',
           mobile
             ? '-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900'
-            : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white'
         )}
         onClick={() => setMobileMenuOpen(false)}
       >
@@ -45,52 +46,49 @@ export function Header() {
         target="_blank"
         rel="noopener noreferrer"
         className={clsx(
-          'text-sm font-medium flex items-center gap-1',
+          'text-sm font-medium flex items-center',
           mobile
             ? '-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900'
-            : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white'
         )}
         onClick={() => setMobileMenuOpen(false)}
       >
-        X
-        <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+        <XIcon className="h-4 w-4" />
       </a>
       <a
         href="https://t.me/eliza_builders"
         target="_blank"
         rel="noopener noreferrer"
         className={clsx(
-          'text-sm font-medium flex items-center gap-1',
+          'text-sm font-medium flex items-center',
           mobile
             ? '-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900'
-            : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white'
         )}
         onClick={() => setMobileMenuOpen(false)}
       >
-        Telegram
-        <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+        <TelegramIcon className="h-5 w-5" />
       </a>
       <a
         href="https://discord.gg/elizaos"
         target="_blank"
         rel="noopener noreferrer"
         className={clsx(
-          'text-sm font-medium flex items-center gap-1',
+          'text-sm font-medium flex items-center',
           mobile
             ? '-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900'
-            : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white'
         )}
         onClick={() => setMobileMenuOpen(false)}
       >
-        Discord
-        <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+        <DiscordIcon className="h-5 w-5" />
       </a>
     </>
   );
 
   return (
     <header className="fixed top-0 left-0 right-0 z-10 bg-white dark:bg-black">
-      <nav className="px-4 lg:px-6" aria-label="Global">
+      <nav className="px-4 lg:px-6 w-full" aria-label="Global">
         <div className="flex items-center justify-between py-4">
           <div className="flex">
             <Link href="/" className="-m-1.5 p-1.5">
@@ -98,22 +96,8 @@ export function Header() {
             </Link>
           </div>
 
-          <div className="hidden md:flex md:gap-x-4 lg:gap-x-8 md:ml-auto">
+          <div className="gap-x-4 flex ml-auto">
             <NavLinks />
-          </div>
-
-          <div className="flex md:hidden">
-            <button
-              type="button"
-              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-zinc-700 dark:text-zinc-400"
-              onClick={() => setMobileMenuOpen(true)}
-            >
-              <span className="sr-only">Open main menu</span>
-              <Bars3Icon className="h-6 w-6" aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="hidden md:flex md:flex-1 md:justify-end">
           </div>
         </div>
       </nav>
