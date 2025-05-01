@@ -7,15 +7,14 @@ import {
   type Action,
   type Evaluator,
   type IAgentRuntime,
-  type Provider,
-  MemoryType,
   type KnowledgeItem,
+  type Provider,
   type UUID
 } from '@elizaos/core';
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
 import { v4 as uuidv4 } from 'uuid';
 
 // Get the current file's directory
@@ -230,12 +229,7 @@ const devRel = {
               for (const docContent of docKnowledge) {
                   const knowledgeItem: KnowledgeItem = {
                       id: uuidv4() as UUID,
-                      content: { text: docContent },
-                      metadata: {
-                          type: MemoryType.DOCUMENT,
-                          source: 'dynamic-docs',
-                          timestamp: Date.now()
-                      }
+                      content: { text: docContent }
                   };
                   try {
                       const defaultKnowledgeOptions = {
@@ -244,10 +238,7 @@ const devRel = {
                           modelContextSize: 4096,
                       };
 
-                      await runtime.addKnowledge(knowledgeItem, defaultKnowledgeOptions, {
-                          roomId: runtime.agentId,
-                          entityId: runtime.agentId
-                      });
+                      await runtime.addKnowledge(knowledgeItem, defaultKnowledgeOptions);
                       addedCount++;
                   } catch (addError) {
                       logger.error(`Failed to add knowledge item: ${addError}`);

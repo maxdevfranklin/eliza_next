@@ -40,7 +40,7 @@ export function ChatMessages({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string>('');
-  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollToBottom = (behavior: ScrollBehavior = 'instant') => {
     if (scrollTimeoutRef.current) {
