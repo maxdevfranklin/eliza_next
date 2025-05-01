@@ -1,20 +1,21 @@
 "use client";
 
 import {
-  ArrowTopRightOnSquareIcon,
-  Bars3Icon,
-  XMarkIcon,
+  XMarkIcon
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Dialog } from "@/components/dialog";
+import { DiscordIcon, XIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
-import { XIcon, TelegramIcon, DiscordIcon } from "@/components/icons";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const NavLinks = ({ mobile = false }) => (
     <>
@@ -85,7 +86,7 @@ export function Header() {
             </Link>
           </div>
 
-          <div className="gap-x-4 flex ml-auto">
+          <div className="gap-x-4 flex ml-auto items-center">
             <NavLinks />
           </div>
         </div>

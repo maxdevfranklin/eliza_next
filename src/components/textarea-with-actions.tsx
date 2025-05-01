@@ -30,7 +30,7 @@ const ChatForm = memo(function ChatForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="flex flex-col items-center justify-center bg-zinc-950"
+      className="flex flex-col items-center justify-center"
     >
       <div className="relative min-h-[36px] w-full">
         <textarea
@@ -40,9 +40,9 @@ const ChatForm = memo(function ChatForm({
           onChange={onInputChange}
           placeholder={placeholder || "Ask a follow up..."}
           className={clsx([
-            "size-full bg-zinc-950",
+            "size-full",
             "relative block size-full appearance-none",
-            "placeholder:text-zinc-500",
+            "placeholder:text-zinc-500 dark:placeholder:text-zinc-400",
             "resize-none",
             "focus:outline-none",
             "scrollbar scrollbar-thumb-zinc-700 scrollbar-thumb-rounded-full scrollbar-w-[4px]",
@@ -60,7 +60,7 @@ const ChatForm = memo(function ChatForm({
         <div />
         <Button
           type="submit"
-          color={(input ? "orange" : "dark") as "orange" | "dark"}
+          color={(input ? "blue" : "dark") as "blue" | "dark"}
           disabled={!input || isLoading}
           aria-label="Submit"
           className="size-8"
@@ -102,14 +102,14 @@ export const TextareaWithActions = memo(function TextareaWithActions({
         <div
           className={clsx([
             "relative block size-full appearance-none overflow-hidden rounded-lg",
-            "text-base/6 text-zinc-950 placeholder:text-zinc-400 sm:text-sm/6 dark:text-white",
-            "bg-zinc-950/5 dark:bg-white/5",
+            "text-base/6 text-zinc-950 placeholder:text-zinc-500 sm:text-sm/6 dark:text-white dark:placeholder:text-zinc-400",
+            "bg-white dark:bg-zinc-950",
             "focus:outline-none",
             "data-[invalid]:border-red-500 data-[invalid]:data-[hover]:border-red-500 data-[invalid]:dark:border-red-600 data-[invalid]:data-[hover]:dark:border-red-600",
             "disabled:border-zinc-950/20 disabled:dark:border-white/15 disabled:dark:bg-white/[2.5%] dark:data-[hover]:disabled:border-white/15",
             "ring-offset-background",
-            "focus-within:ring focus-within:ring-zinc-200 focus-within:dark:ring-zinc-800",
-            "border border-zinc-200 dark:border-zinc-800",
+            "focus-within:ring focus-within:ring-blue-400 dark:focus-within:ring-blue-500",
+            "border border-zinc-950/10 dark:border-white/10",
             "relative",
           ])}
         >

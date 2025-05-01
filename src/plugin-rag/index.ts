@@ -759,38 +759,50 @@ export const ragPlugin: Plugin = {
     logger.info('Character initialized.');
     setTimeout(async () => {
       console.log('*** Loading documentation...');
+      console.log("workspaceRoot", workspaceRoot);
+
+      // get absolute path of workspaceRoot
+      const absoluteWorkspaceRoot = path.resolve(workspaceRoot);
+      console.log("absoluteWorkspaceRoot", absoluteWorkspaceRoot);
+
+      // check if any part of the path includes eliza/packages
+      const isMonorepo = absoluteWorkspaceRoot.includes('/packages/');
+      console.log("isMonorepo", isMonorepo)
+
       try {
-        // if (!fs.existsSync(repoPath)) {
-        //   logger.info(`Repository not found. Cloning ${branch} branch from ${repoUrl}...`);
-        //   execSync(`git clone --depth 1 --branch ${branch} ${repoUrl} ${repoDirName}`, {
-        //     cwd: workspaceRoot,
-        //     stdio: 'inherit',
-        //   });
-        //   logger.info('Repository cloned successfully.');
-        // } else {
-        //   logger.info('Repository found. Checking out branch and pulling latest changes...');
-        //   try {
-        //     execSync(`git checkout ${branch}`, {
-        //       cwd: repoPath,
-        //       stdio: 'inherit',
-        //     });
-        //   } catch (checkoutError) {
-        //     logger.warn(
-        //       `Failed to checkout ${branch} (maybe already on it or stash needed?), attempting pull anyway: ${checkoutError}`
-        //     );
-        //   }
-        //   try {
-        //     execSync(`git pull origin ${branch}`, {
-        //       cwd: repoPath,
-        //       stdio: 'inherit',
-        //     });
-        //     logger.info(`Pulled latest changes from origin/${branch}.`);
-        //   } catch (pullError) {
-        //     logger.error(
-        //       `Failed to pull changes for ${branch}: ${pullError}. Continuing with local version.`
-        //     );
-        //   }
-        // }
+        if (!isMonorepo){
+          if (!fs.existsSync(repoPath)) {
+            logger.info(`Repository not found. Cloning ${branch} branch from ${repoUrl}...`);
+            execSync(`git clone --depth 1 --branch ${branch} ${repoUrl} ${repoDirName}`, {
+              cwd: workspaceRoot,
+              stdio: 'inherit',
+            });
+            logger.info('Repository cloned successfully.');
+          } else {
+            logger.info('Repository found. Checking out branch and pulling latest changes...');
+            try {
+              execSync(`git checkout ${branch}`, {
+                cwd: repoPath,
+                stdio: 'inherit',
+              });
+            } catch (checkoutError) {
+              logger.warn(
+                `Failed to checkout ${branch} (maybe already on it or stash needed?), attempting pull anyway: ${checkoutError}`
+              );
+            }
+            try {
+              execSync(`git pull origin ${branch}`, {
+                cwd: repoPath,
+                stdio: 'inherit',
+              });
+              logger.info(`Pulled latest changes from origin/${branch}.`);
+            } catch (pullError) {
+              logger.error(
+                `Failed to pull changes for ${branch}: ${pullError}. Continuing with local version.`
+              );
+            }
+          }
+        }
 
         const docsPath = path.join(repoPath, 'packages', 'docs', 'docs');
         logger.info(`Attempting to load documentation from: ${docsPath}`);
