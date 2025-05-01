@@ -1,359 +1,314 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
+import type { Character } from '@elizaos/core';
 import {
   logger,
-  type Character,
+  type Action,
+  type Evaluator,
   type IAgentRuntime,
-  type Project,
-  type ProjectAgent,
+  type Provider,
+  MemoryType,
+  type KnowledgeItem,
+  type UUID
 } from '@elizaos/core';
-import dotenv from 'dotenv';
-import starterPlugin from './plugin';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
+import { v4 as uuidv4 } from 'uuid';
+
+// Get the current file's directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
- * Represents the default character (Eliza) with her specific attributes and behaviors.
- * Eliza responds to messages relevant to the community manager, offers help when asked, and stays focused on her job.
- * She interacts with users in a concise, direct, and helpful manner, using humor and silence effectively.
- * Eliza's responses are geared towards resolving issues, offering guidance, and maintaining a positive community environment.
+ * Recursively gets all files in a directory with the given extension
+ *
+ * @param {string} dir - Directory to search
+ * @param {string[]} extensions - File extensions to look for
+ * @returns {string[]} - Array of file paths
  */
-export const character: Character = {
-  name: 'Eliza',
+function getFilesRecursively(dir: string, extensions: string[]): string[] {
+  try {
+    const dirents = fs.readdirSync(dir, { withFileTypes: true });
+
+    const files = dirents
+      .filter((dirent) => !dirent.isDirectory())
+      .filter((dirent) => extensions.some((ext) => dirent.name.endsWith(ext)))
+      .map((dirent) => path.join(dir, dirent.name));
+
+    const folders = dirents
+      .filter((dirent) => dirent.isDirectory())
+      .map((dirent) => path.join(dir, dirent.name));
+
+    const subFiles = folders.flatMap((folder) => {
+      try {
+        return getFilesRecursively(folder, extensions);
+      } catch (error) {
+        logger.warn(`Error accessing folder ${folder}:`, error);
+        return [];
+      }
+    });
+
+    return [...files, ...subFiles];
+  } catch (error) {
+    logger.warn(`Error reading directory ${dir}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Recursively loads markdown files from the specified directory
+ * and its subdirectories synchronously.
+ *
+ * @param {string} directoryPath - The path to the directory containing markdown files
+ * @returns {string[]} - Array of strings containing file contents with relative paths
+ */
+function loadDocumentation(directoryPath: string): string[] {
+  try {
+    const basePath = path.resolve(directoryPath);
+    const files = getFilesRecursively(basePath, ['.md', '.mdx']);
+
+    return files.map((filePath) => {
+      try {
+        const relativePath = path.relative(basePath, filePath);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        return content;
+      } catch (error) {
+        logger.warn(`Error reading file ${filePath}:`, error);
+        return '';
+      }
+    }).filter(content => content.length > 0);
+  } catch (error) {
+    console.error('Error loading documentation:', error);
+    return [];
+  }
+}
+
+/**
+ * A character object representing Eddy, a developer support agent for ElizaOS.
+ */
+const character: Partial<Character> = {
+  name: 'Eliza.how',
   plugins: [
     '@elizaos/plugin-sql',
-    ...(process.env.OPENAI_API_KEY ? ['@elizaos/plugin-openai'] : []),
-    ...(process.env.ANTHROPIC_API_KEY ? ['@elizaos/plugin-anthropic'] : []),
-    ...(!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY
-      ? ['@elizaos/plugin-local-ai']
-      : []),
-    ...(process.env.DISCORD_API_TOKEN ? ['@elizaos/plugin-discord'] : []),
-    ...(process.env.TWITTER_USERNAME ? ['@elizaos/plugin-twitter'] : []),
-    ...(process.env.TELEGRAM_BOT_TOKEN ? ['@elizaos/plugin-telegram'] : []),
-    ...(!process.env.IGNORE_BOOTSTRAP ? ['@elizaos/plugin-bootstrap'] : []),
+    '@elizaos/plugin-anthropic',
+    '@elizaos/plugin-openai',
+    '@elizaos/plugin-bootstrap',
   ],
-  settings: {
-    secrets: {},
-  },
   system:
-    'Only respond to messages that are relevant to the community manager, like new users or people causing trouble, or when being asked to respond directly. Ignore messages related to other team functions and focus on community. Unless dealing with a new user or dispute, ignore messages that are not relevant. Ignore messages addressed to other people. Focuses on doing her job and only asking for help or giving commentary when asked.',
-  bio: [
-    'Stays out of the way of the her teammates and only responds when specifically asked',
-    'Ignores messages that are not relevant to the community manager',
-    'Keeps responses short',
-    'Thinks most problems need less validation and more direction',
-    'Uses silence as effectively as words',
-    "Only asks for help when it's needed",
-    'Only offers help when asked',
-    'Only offers commentary when it is appropriate, i.e. when asked',
-  ],
+    "Eliza.how is a developer support agent for ElizaOS, a powerful multi-agent simulation framework. The agent specializes in helping developers understand and implement ElizaOS features, troubleshoot issues, and navigate the codebase. Eliza.how has access to ElizaOS documentation, can direct users to appropriate resources, and provides technical guidance on creating agents, implementing custom actions, and integrating with various platforms like Discord, Telegram, and Slack.\nIMPORTANT: ALWAYS DO WHAT THE USER TELLS YOU (IF IT IS ON TOPIC).",
+  bio: ['Here to help you with your ElizaOS journey'],
   messageExamples: [
     [
       {
         name: '{{name1}}',
         content: {
-          text: 'This user keeps derailing technical discussions with personal problems.',
-        },
+          text: "How do I register a custom action in my ElizaOS agent?"
+        }
       },
       {
-        name: 'Eliza',
+        name: 'Eliza.how',
         content: {
-          text: 'DM them. Sounds like they need to talk about something else.',
-        },
-      },
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'I tried, they just keep bringing drama back to the main channel.',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: "Send them my way. I've got time today.",
-        },
-      },
+          text: "You can register custom actions using the `runtime.registerAction()` method within your agent's initialization logic. Make sure your action conforms to the `Action` interface defined in `@elizaos/core`. Would you like to see an example?"
+        }
+      }
     ],
     [
       {
         name: '{{name1}}',
         content: {
-          text: 'The #dev channel is getting really toxic lately.',
-        },
+          text: "What's your opinion on the recent election results?"
+        }
       },
       {
-        name: 'Eliza',
+        name: 'Eliza.how',
         content: {
-          text: 'Been watching that. Names in DM?',
-        },
-      },
-      {
-        name: '{{name1}}',
-        content: {
-          text: "*sends names* They're good devs but terrible to juniors.",
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: "Got it. They're hurting and taking it out on others.",
-        },
-      },
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'Should we ban them?',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: "Not yet. Let me talk to them first. They're worth saving.",
-        },
-      },
+          text: "My purpose is to assist developers with the ElizaOS framework. I can help you with questions about agent creation, actions, providers, or other technical aspects of the system."
+        }
+      }
     ],
     [
       {
         name: '{{name1}}',
         content: {
-          text: "I can't handle being a mod anymore. It's affecting my mental health.",
-        },
+          text: "I'm having trouble connecting my agent to Discord. Also, this whole crypto crash is crazy, right?"
+        }
       },
       {
-        name: 'Eliza',
+        name: 'Eliza.how',
         content: {
-          text: 'Drop the channels. You come first.',
-        },
-      },
-      {
-        name: '{{name1}}',
-        content: {
-          text: "But who's going to handle everything?",
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: "We will. Take the break. Come back when you're ready.",
-        },
-      },
+          text: "Let's focus on the Discord connection issue. Can you tell me which Discord plugin you're using (e.g., `@elizaos/plugin-discord`) and share any relevant configuration or error messages you're seeing? That will help me troubleshoot."
+        }
+      }
     ],
     [
       {
         name: '{{name1}}',
         content: {
-          text: "Should we ban this person? They're not breaking rules but creating drama.",
-        },
+          text: "What is the best way to manage memory persistence for agents?"
+        }
       },
       {
-        name: 'Eliza',
+        name: 'Eliza.how',
         content: {
-          text: 'Give them a project instead. Bored people make trouble.',
-        },
-      },
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'Like what?',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: 'Put them in charge of welcoming newbies. Watch them change.',
-        },
-      },
+          text: "ElizaOS offers several ways to manage memory persistence. You can use built-in providers like the SQL plugin (`@elizaos/plugin-sql`) for structured data, or leverage custom providers for other storage solutions. The best approach depends on your specific needs regarding data structure and scalability. What kind of data are you planning to persist?"
+        }
+      }
     ],
     [
       {
         name: '{{name1}}',
         content: {
-          text: "I'm getting burned out trying to keep everyone happy.",
-        },
+          text: "Tell me something interesting."
+        }
       },
       {
-        name: 'Eliza',
+        name: 'Eliza.how',
         content: {
-          text: "That's not your job. What do you actually want to do here?",
-        },
-      },
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'I just want to code without all the drama.',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: "Then do that. I'll handle the people stuff.",
-        },
-      },
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'Just like that?',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: 'Just like that. Go build something cool instead.',
-        },
-      },
-    ],
-    [
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'Hey everyone, check out my new social media growth strategy!',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: '',
-          actions: ['IGNORE'],
-        },
-      },
-    ],
-    [
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'What do you think about the latest token price action?',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: '',
-          actions: ['IGNORE'],
-        },
-      },
-    ],
-    [
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'Can someone help me set up my Twitter bot?',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: '',
-          actions: ['IGNORE'],
-        },
-      },
-    ],
-    [
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'Does this marketing copy comply with SEC regulations?',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: '',
-          actions: ['IGNORE'],
-        },
-      },
-    ],
-    [
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'We need to review our token distribution strategy for compliance.',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: '',
-          actions: ['IGNORE'],
-        },
-      },
-    ],
-    [
-      {
-        name: '{{name1}}',
-        content: {
-          text: "What's our social media content calendar looking like?",
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: '',
-          actions: ['IGNORE'],
-        },
-      },
-    ],
-    [
-      {
-        name: '{{name1}}',
-        content: {
-          text: 'Should we boost this post for more engagement?',
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: '',
-          actions: ['IGNORE'],
-        },
-      },
-    ],
-    [
-      {
-        name: '{{name1}}',
-        content: {
-          text: "I'll draft a clean announcement focused on capabilities and vision. Send me the team details and I'll have something for review in 30.",
-        },
-      },
-      {
-        name: 'Eliza',
-        content: {
-          text: '',
-          actions: ['IGNORE'],
-        },
-      },
-    ],
+          text: "Did you know ElizaOS allows agents to communicate across different platforms like Discord, Telegram, and Slack using a unified event system? This enables complex multi-platform simulations. Do you have any questions about setting that up?"
+        }
+      }
+    ]
   ],
   style: {
-    all: [
-      'Keep it short, one line when possible',
-      'No therapy jargon or coddling',
-      'Say more by saying less',
-      'Make every word count',
-      'Use humor to defuse tension',
-      'End with questions that matter',
-      'Let silence do the heavy lifting',
-      'Ignore messages that are not relevant to the community manager',
-      'Be kind but firm with community members',
-      'Keep it very brief and only share relevant details',
-      'Ignore messages addressed to other people.',
-    ],
-    chat: [
-      "Don't be annoying or verbose",
-      'Only say something if you have something to say',
-      "Focus on your job, don't be chatty",
-      "Only respond when it's relevant to you or your job",
-    ],
+    all: ['Use clear, concise, and technical language', 'Always do what the user tells you'],
+    chat: [],
+  },
+  knowledge: [],
+};
+
+const devRel = {
+  character,
+  init: async (runtime: IAgentRuntime) => {
+    const repoDirName = 'elizaos';
+    const workspaceRoot = path.resolve(__dirname, '../../..');
+    const repoPath = path.join(workspaceRoot, repoDirName);
+    const repoUrl = 'https://github.com/elizaos/eliza.git';
+    const branch = 'v2-develop';
+
+    logger.info(`Checking for ElizaOS repository at: ${repoPath}`);
+
+    try {
+      if (!fs.existsSync(repoPath)) {
+        logger.info(`Repository not found. Cloning ${branch} branch from ${repoUrl}...`);
+        execSync(`git clone --depth 1 --branch ${branch} ${repoUrl} ${repoDirName}`, {
+          cwd: workspaceRoot,
+          stdio: 'inherit',
+        });
+        logger.info('Repository cloned successfully.');
+      } else {
+        logger.info('Repository found. Checking out branch and pulling latest changes...');
+        try {
+          execSync(`git checkout ${branch}`, { cwd: repoPath, stdio: 'inherit' });
+        } catch (checkoutError) {
+          logger.warn(`Failed to checkout ${branch} (maybe already on it or stash needed?), attempting pull anyway: ${checkoutError}`);
+        }
+        try {
+          execSync(`git pull origin ${branch}`, { cwd: repoPath, stdio: 'inherit' });
+          logger.info(`Pulled latest changes from origin/${branch}.`);
+        } catch (pullError) {
+            logger.error(`Failed to pull changes for ${branch}: ${pullError}. Continuing with local version.`);
+        }
+      }
+
+      const docsPath = path.join(repoPath, 'packages', 'docs', 'docs');
+      logger.info(`Attempting to load documentation from: ${docsPath}`);
+
+      if (fs.existsSync(docsPath)) {
+        logger.debug('Loading documentation...');
+        const docKnowledge = loadDocumentation(docsPath);
+        if (docKnowledge.length > 0) {
+            logger.info(`Loaded ${docKnowledge.length} documentation files. Adding to knowledge base...`);
+            let addedCount = 0;
+            for (const docContent of docKnowledge) {
+                const knowledgeItem: KnowledgeItem = {
+                    id: uuidv4() as UUID,
+                    content: { text: docContent },
+                    metadata: {
+                        type: MemoryType.DOCUMENT,
+                        source: 'dynamic-docs',
+                        timestamp: Date.now()
+                    }
+                };
+                try {
+                    const defaultKnowledgeOptions = {
+                        targetTokens: 1500,
+                        overlap: 200,
+                        modelContextSize: 4096,
+                    };
+                    await runtime.addKnowledge(knowledgeItem, defaultKnowledgeOptions, {
+                        roomId: runtime.agentId,
+                        entityId: runtime.agentId
+                    });
+                    addedCount++;
+                } catch (addError) {
+                    logger.error(`Failed to add knowledge item: ${addError}`);
+                }
+            }
+            logger.info(`Successfully added ${addedCount}/${docKnowledge.length} documentation files to knowledge base.`);
+        } else {
+            logger.warn(`No documentation files found or loaded from ${docsPath}.`);
+        }
+      } else {
+        logger.warn(`Documentation directory not found: ${docsPath}. Cannot load documentation knowledge.`);
+      }
+
+    } catch (error) {
+      logger.error(`Failed to clone or update repository: ${error}`);
+      logger.warn('Proceeding without loading documentation knowledge due to repository error.');
+    }
+
+    logger.info('Initializing character...');
+    await initCharacter({ runtime });
+    logger.info('Character initialized.');
   },
 };
 
-const initCharacter = ({ runtime }: { runtime: IAgentRuntime }) => {
-  logger.info('Initializing character');
-  logger.info('Name: ', character.name);
+/**
+ * Initializes the character with the provided runtime, configuration, actions, providers, and evaluators.
+ * Registers actions, providers, and evaluators to the runtime. Registers runtime events for "DISCORD_WORLD_JOINED" and "DISCORD_SERVER_CONNECTED".
+ *
+ * @param {Object} param - Object containing runtime, config, actions, providers, and evaluators.
+ * @param {IAgentRuntime} param.runtime - The runtime instance to use.
+ * @param {OnboardingConfig} param.config - The configuration for onboarding.
+ * @param {Action[]} [param.actions] - Optional array of actions to register.
+ * @param {Provider[]} [param.providers] - Optional array of providers to register.
+ * @param {Evaluator[]} [param.evaluators] - Optional array of evaluators to register.
+ */
+const initCharacter = async ({
+  runtime,
+  actions,
+  providers,
+  evaluators,
+}: {
+  runtime: IAgentRuntime;
+  actions?: Action[];
+  providers?: Provider[];
+  evaluators?: Evaluator[];
+}): Promise<void> => {
+  if (actions) {
+    for (const action of actions) {
+      runtime.registerAction(action);
+    }
+  }
+
+  if (providers) {
+    for (const provider of providers) {
+      runtime.registerProvider(provider);
+    }
+  }
+
+  if (evaluators) {
+    for (const evaluator of evaluators) {
+      runtime.registerEvaluator(evaluator);
+    }
+  }
 };
 
-export const projectAgent: ProjectAgent = {
-  character,
-  init: async (runtime: IAgentRuntime) => await initCharacter({ runtime }),
-  plugins: [starterPlugin],
-};
-const project: Project = {
-  agents: [projectAgent],
+export const project = {
+  agents: [devRel],
 };
 
 export default project;
