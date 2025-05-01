@@ -15,6 +15,30 @@ import { getOrGenerateSeed } from '@/lib/local-storage';
 import { generateQueryRoomId } from '@/lib/uuid-utils'; // Import new function
 import useLocalStorage from '@/hooks/use-local-storage'; // Import the hook
 
+// Simple spinner component
+const LoadingSpinner = () => (
+  <svg
+    className="animate-spin h-4 w-4 text-zinc-600 dark:text-zinc-400"
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+  >
+    <circle
+      className="opacity-25"
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="currentColor"
+      strokeWidth="4"
+    ></circle>
+    <path
+      className="opacity-75"
+      fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+    ></path>
+  </svg>
+);
+
 export const Chat = () => {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || ''; // Default to empty string if null
@@ -32,6 +56,7 @@ export const Chat = () => {
   const [roomId, setRoomId] = useState<string | null>(null); // Query-specific Room UUID
   const [seed, setSeed] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
+  const [isAgentThinking, setIsAgentThinking] = useState<boolean>(false); // New state
 
   // --- Refs ---
   const initStartedRef = useRef(false);
@@ -98,6 +123,7 @@ export const Chat = () => {
       };
 
       setMessages((prev) => [...prev, userMessage]);
+      setIsAgentThinking(true); // Start thinking when user sends message
 
       socketIOManager.sendMessage(messageText, currentRoomId, userMessage.source);
     },
@@ -213,14 +239,18 @@ export const Chat = () => {
             (msg.id && msg.id === newMessage.id) ||
             (msg.senderId === newMessage.senderId &&
               msg.text === newMessage.text &&
-              Math.abs((msg.createdAt || 0) - (newMessage.createdAt || 0)) < 2000)
+              Math.abs((msg.createdAt || 0) - (newMessage.createdAt || 0)) < 2000) // Increased tolerance slightly
         );
+
         if (isDuplicate) {
           console.log('[Chat setMessages] Skipping duplicate.');
           return prev;
         }
         const newState = [...prev, newMessage];
         console.log('[Chat setMessages] New state:', newState);
+        if (newMessage.name !== USER_NAME) {
+          setIsAgentThinking(false); // Stop thinking when agent message arrives
+        }
         return newState;
       });
     };
@@ -240,6 +270,12 @@ export const Chat = () => {
         `[Chat handleControl] Invalid action: ${data.action}`
       );
       setInputDisabled(data.action === 'disable_input');
+      // Also update thinking state based on input control if needed,
+      // though typically message arrival is a better signal.
+      // If input is enabled, agent is likely done.
+      if (data.action === 'enable_input') {
+        setIsAgentThinking(false);
+      }
     };
 
     const msgHandler = socketIOManager.evtMessageBroadcast.attach(handleMessage);
@@ -291,6 +327,7 @@ export const Chat = () => {
           source: `${CHAT_SOURCE}:${USER_NAME}:followup`,
         };
         setMessages((prev) => [...prev, userMessage]);
+        setIsAgentThinking(true); // Start thinking on follow-up click
         sendMessage(prompt, roomId, worldId);
       } else {
         console.error('Cannot send follow-up: Missing IDs');
@@ -321,6 +358,12 @@ export const Chat = () => {
             followUpPromptsMap={followUpPromptsMap}
             onFollowUpClick={handleFollowUpClick}
           />
+          {isAgentThinking && (
+            <div className="flex items-center justify-start gap-2 text-sm text-zinc-600 dark:text-zinc-400 mt-4 ml-1">
+              <LoadingSpinner />
+              <span>Thinking...</span>
+            </div>
+          )}
         </div>
       </div>
       <div className="fixed inset-x-0 bottom-0 bg-background pb-4 pt-0.5">

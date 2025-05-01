@@ -31,6 +31,7 @@
     "date-fns": "^4.1.0",
     "eslint-plugin-path-alias": "^2.1.0",
     "eslint-plugin-tailwindcss": "^3.17.5",
+    "evt": "^2.5.9",
     "js-sha1": "^0.7.0",
     "lucide-react": "^0.468.0",
     "markdown-to-jsx": "^7.7.1",

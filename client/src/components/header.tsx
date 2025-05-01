@@ -5,7 +5,6 @@ import clsx from 'clsx';
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { Button } from '@/components/button';
 import { Dialog } from '@/components/dialog';
 import { Logo } from '@/components/logo';
 
@@ -41,6 +40,51 @@ export function Header() {
         Docs
         <ArrowTopRightOnSquareIcon className="h-3 w-3" />
       </a>
+      <a
+        href="https://twitter.com/elizaos"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={clsx(
+          'text-sm font-medium flex items-center gap-1',
+          mobile
+            ? '-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900'
+            : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+        )}
+        onClick={() => setMobileMenuOpen(false)}
+      >
+        X
+        <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+      </a>
+      <a
+        href="https://t.me/eliza_builders"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={clsx(
+          'text-sm font-medium flex items-center gap-1',
+          mobile
+            ? '-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900'
+            : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+        )}
+        onClick={() => setMobileMenuOpen(false)}
+      >
+        Telegram
+        <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+      </a>
+      <a
+        href="https://discord.gg/elizaos"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={clsx(
+          'text-sm font-medium flex items-center gap-1',
+          mobile
+            ? '-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900'
+            : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+        )}
+        onClick={() => setMobileMenuOpen(false)}
+      >
+        Discord
+        <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+      </a>
     </>
   );
 
@@ -54,7 +98,7 @@ export function Header() {
             </Link>
           </div>
 
-          <div className="hidden md:flex md:gap-x-4 lg:gap-x-8 md:ml-8">
+          <div className="hidden md:flex md:gap-x-4 lg:gap-x-8 md:ml-auto">
             <NavLinks />
           </div>
 
@@ -70,9 +114,6 @@ export function Header() {
           </div>
 
           <div className="hidden md:flex md:flex-1 md:justify-end">
-            <Button color="orange" href="https://discord.gg/elizaos" target="_blank">
-              Join Discord
-            </Button>
           </div>
         </div>
       </nav>
@@ -100,17 +141,6 @@ export function Header() {
           <div className="mt-6 flow-root">
             <div className="space-y-2 py-6">
               <NavLinks mobile />
-            </div>
-            <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-              <Button
-                color="orange"
-                href="https://discord.gg/elizaos"
-                target="_blank"
-                className="w-full justify-center text-base"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Join Discord
-              </Button>
             </div>
           </div>
         </div>
