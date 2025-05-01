@@ -214,20 +214,6 @@ export const groqPlugin: Plugin = {
     }
   },
   models: {
-    [ModelType.TEXT_EMBEDDING]: async (
-      runtime,
-      params: TextEmbeddingParams | string | null
-    ): Promise<number[]> => {
-      try {
-        const testVector = Array(1536).fill(0);
-        testVector[0] = 0.1;
-        return testVector;
-      } catch (error) {
-        logger.error('Error in TEXT_EMBEDDING model:', error);
-        // Return a fallback vector rather than crashing
-        return Array(1536).fill(0);
-      }
-    },
     [ModelType.TEXT_TOKENIZER_ENCODE]: async (
       _runtime,
       { prompt, modelType = ModelType.TEXT_LARGE }: TokenizeTextParams
@@ -465,19 +451,6 @@ export const groqPlugin: Plugin = {
               }
             } catch (error) {
               logger.error('Error in groq_test_url_and_api_key_validation:', error);
-            }
-          },
-        },
-        {
-          name: 'groq_test_text_embedding',
-          fn: async (runtime) => {
-            try {
-              const embedding = await runtime.useModel(ModelType.TEXT_EMBEDDING, {
-                text: 'Hello, world!',
-              });
-              logger.log('embedding', embedding);
-            } catch (error) {
-              logger.error('Error in test_text_embedding:', error);
             }
           },
         },

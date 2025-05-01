@@ -37,11 +37,6 @@ const nextConfig: NextConfig = {
       },
     };
   },
-  devIndicators: {
-    buildActivityPosition: 'bottom-right',
-    appIsrStatus: false,
-    buildActivity: false,
-  },
   async redirects() {
     return [
       {

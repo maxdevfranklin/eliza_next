@@ -1,4 +1,4 @@
-import { knowledgeProvider } from "@/plugin-rag/providers/knowledge";
+import { knowledgeProvider } from '@/plugin-rag/providers/knowledge';
 import {
   type Action,
   type ActionEventPayload,
@@ -11,7 +11,7 @@ import {
   type Evaluator,
   EventType,
   type IAgentRuntime,
-  type KnowledgeItem,
+  KnowledgeItem,
   logger,
   type Media,
   type MessagePayload,
@@ -21,12 +21,13 @@ import {
   type Provider,
   type UUID,
   type WorldPayload,
-} from "@elizaos/core";
-import { execSync } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { v4 as uuidv4, v4 } from "uuid";
+} from '@elizaos/core';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { v4 } from 'uuid';
+import { recentMessagesProvider } from './providers/recentMessages';
+import { execSync } from 'node:child_process';
 
 /**
  * Extracts the text content from within a <response> XML tag.
@@ -40,13 +41,11 @@ function extractResponseText(text: string): string | null {
   const responseMatch = text.match(/<response>([\s\S]*?)<\/response>/);
 
   if (!responseMatch || responseMatch[1] === undefined) {
-    logger.warn("Could not find <response> tag or its content in text");
+    logger.warn('Could not find <response> tag or its content in text');
     // Attempt to find *any* XML block as a fallback, but log that it wasn't the expected <response>
     const fallbackMatch = text.match(/<(\w+)>([\s\S]*?)<\/\1>/);
     if (fallbackMatch && fallbackMatch[2] !== undefined) {
-      logger.warn(
-        `Found <${fallbackMatch[1]}> tag instead of <response>. Using its content.`,
-      );
+      logger.warn(`Found <${fallbackMatch[1]}> tag instead of <response>. Using its content.`);
       const fallbackContent = fallbackMatch[2].trim();
       return fallbackContent || null; // Return null if content is empty after trimming
     }
@@ -57,35 +56,28 @@ function extractResponseText(text: string): string | null {
 
   // Return null if the content is empty after trimming
   if (!responseContent) {
-    logger.warn("Found <response> tag, but its content is empty");
+    logger.warn('Found <response> tag, but its content is empty');
     return null;
   }
 
   // Basic unescaping for common XML entities (can be expanded if needed)
   const unescapedContent = responseContent
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'");
 
   return unescapedContent;
 }
 
-export const messageHandlerTemplate = `<task>Generate dialog and actions for the character {{agentName}}.</task>  
-
+export const messageHandlerTemplate = `
 <providers>
 {{providers}}
 </providers>
 
-These are the available valid actions:
-<actionNames>
-{{actionNames}}
-</actionNames>
-
 <instructions>
-Write a thought and plan for {{agentName}} and decide what actions to take. Also include the providers that {{agentName}} will use to have the right context for responding and acting, if any.
-First, think about what you want to do next and plan your actions. Then, write the next message and include the actions you plan to take.
+Respond to the user's message and answer their question thoroughly and thoroughly.
 </instructions>
 
 <keys>
@@ -169,9 +161,7 @@ function sanitizeJson(rawJson: string): string {
  * @param {Media[]} attachments - Array of Media objects to fetch data from.
  * @returns {Promise<MediaData[]>} - A Promise that resolves with an array of MediaData objects.
  */
-export async function fetchMediaData(
-  attachments: Media[],
-): Promise<MediaData[]> {
+export async function fetchMediaData(attachments: Media[]): Promise<MediaData[]> {
   return Promise.all(
     attachments.map(async (attachment: Media) => {
       if (/^(http|https):\/\//.test(attachment.url)) {
@@ -181,7 +171,7 @@ export async function fetchMediaData(
           throw new Error(`Failed to fetch file: ${attachment.url}`);
         }
         const mediaBuffer = Buffer.from(await response.arrayBuffer());
-        const mediaType = attachment.contentType || "image/png";
+        const mediaType = attachment.contentType || 'image/png';
         return { data: mediaBuffer, mediaType };
       }
       // if (fs.existsSync(attachment.url)) {
@@ -190,10 +180,8 @@ export async function fetchMediaData(
       //   const mediaType = attachment.contentType || 'image/png';
       //   return { data: mediaBuffer, mediaType };
       // }
-      throw new Error(
-        `File not found: ${attachment.url}. Make sure the path is correct.`,
-      );
-    }),
+      throw new Error(`File not found: ${attachment.url}. Make sure the path is correct.`);
+    })
   );
 }
 
@@ -216,7 +204,7 @@ const messageReceivedHandler = async ({
   }
   const agentResponses = latestResponseIds.get(runtime.agentId);
   if (!agentResponses) {
-    throw new Error("Agent responses map not found");
+    throw new Error('Agent responses map not found');
   }
 
   // Set this as the latest response ID for this agent+room
@@ -234,8 +222,8 @@ const messageReceivedHandler = async ({
     roomId: message.roomId,
     entityId: message.entityId,
     startTime,
-    status: "started",
-    source: "messageHandler",
+    status: 'started',
+    source: 'messageHandler',
   });
 
   // Set up timeout monitoring
@@ -251,38 +239,38 @@ const messageReceivedHandler = async ({
         roomId: message.roomId,
         entityId: message.entityId,
         startTime,
-        status: "timeout",
+        status: 'timeout',
         endTime: Date.now(),
         duration: Date.now() - startTime,
-        error: "Run exceeded 60 minute timeout",
-        source: "messageHandler",
+        error: 'Run exceeded 60 minute timeout',
+        source: 'messageHandler',
       });
-      reject(new Error("Run exceeded 60 minute timeout"));
+      reject(new Error('Run exceeded 60 minute timeout'));
     }, timeoutDuration);
   });
 
   const processingPromise = (async () => {
     try {
       if (message.entityId === runtime.agentId) {
-        throw new Error("Message is from the agent itself");
+        throw new Error('Message is from the agent itself');
       }
 
       // First, save the incoming message
       await Promise.all([
         runtime.addEmbeddingToMemory(message),
-        runtime.createMemory(message, "messages"),
+        runtime.createMemory(message, 'messages'),
       ]);
 
-      const state = await runtime.composeState(message);
+      const state = await runtime.composeState(message, [], ['KNOWLEDGE', 'RECENT_MESSAGES']);
 
       const prompt = composePromptFromState({
         state,
-        template:
-          runtime.character.templates?.messageHandlerTemplate ||
-          messageHandlerTemplate,
+        template: runtime.character.templates?.messageHandlerTemplate || messageHandlerTemplate,
       });
 
-      let responseContent: string = "";
+      console.log('*** PROMPT ***\n', prompt);
+
+      let responseContent: string = '';
 
       // Retry if missing required fields
       let retries = 0;
@@ -293,15 +281,13 @@ const messageReceivedHandler = async ({
           prompt,
         });
 
-        logger.debug("*** Raw LLM Response ***\n", response);
+        logger.debug('*** Raw LLM Response ***\n', response);
 
         // Attempt to parse the XML response
         responseContent = extractResponseText(response);
 
         if (!responseContent) {
-          logger.warn(
-            "*** Missing required fields (thought or actions), retrying... ***",
-          );
+          logger.warn('*** Missing required fields (thought or actions), retrying... ***');
         } else {
           break;
         }
@@ -312,7 +298,7 @@ const messageReceivedHandler = async ({
       const currentResponseId = agentResponses.get(message.roomId);
       if (currentResponseId !== responseId) {
         logger.info(
-          `Response discarded - newer message being processed for agent: ${runtime.agentId}, room: ${message.roomId}`,
+          `Response discarded - newer message being processed for agent: ${runtime.agentId}, room: ${message.roomId}`
         );
         return;
       }
@@ -335,10 +321,10 @@ const messageReceivedHandler = async ({
         roomId: message.roomId,
         entityId: message.entityId,
         startTime,
-        status: "completed",
+        status: 'completed',
         endTime: Date.now(),
         duration: Date.now() - startTime,
-        source: "messageHandler",
+        source: 'messageHandler',
       });
     } catch (error) {
       // Emit run ended event with error
@@ -349,11 +335,11 @@ const messageReceivedHandler = async ({
         roomId: message.roomId,
         entityId: message.entityId,
         startTime,
-        status: "completed",
+        status: 'completed',
         endTime: Date.now(),
         duration: Date.now() - startTime,
         error: error.message,
-        source: "messageHandler",
+        source: 'messageHandler',
       });
       throw error;
     }
@@ -387,13 +373,11 @@ const syncSingleUser = async (
   serverId: string,
   channelId: string,
   type: ChannelType,
-  source: string,
+  source: string
 ) => {
   try {
     const entity = await runtime.getEntityById(entityId);
-    logger.info(
-      `Syncing user: ${entity?.metadata[source]?.username || entityId}`,
-    );
+    logger.info(`Syncing user: ${entity?.metadata[source]?.username || entityId}`);
 
     // Ensure we're not using WORLD type and that we have a valid channelId
     if (!channelId) {
@@ -408,10 +392,7 @@ const syncSingleUser = async (
       entityId,
       roomId,
       userName: entity?.metadata[source].username || entityId,
-      name:
-        entity?.metadata[source].name ||
-        entity?.metadata[source].username ||
-        `User${entityId}`,
+      name: entity?.metadata[source].name || entity?.metadata[source].username || `User${entityId}`,
       source,
       channelId,
       serverId,
@@ -421,22 +402,14 @@ const syncSingleUser = async (
 
     logger.success(`Successfully synced user: ${entity?.id}`);
   } catch (error) {
-    logger.error(
-      `Error syncing user: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    logger.error(`Error syncing user: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
 /**
  * Handles standardized server data for both WORLD_JOINED and WORLD_CONNECTED events
  */
-const handleServerSync = async ({
-  runtime,
-  world,
-  rooms,
-  entities,
-  source,
-}: WorldPayload) => {
+const handleServerSync = async ({ runtime, world, rooms, entities, source }: WorldPayload) => {
   logger.debug(`Handling server sync event for server: ${world.name}`);
   try {
     // Create/ensure the world exists for this server
@@ -491,11 +464,9 @@ const handleServerSync = async ({
                 worldId: world.id,
               });
             } catch (err) {
-              logger.warn(
-                `Failed to sync user ${entity.metadata.username}: ${err}`,
-              );
+              logger.warn(`Failed to sync user ${entity.metadata.username}: ${err}`);
             }
-          }),
+          })
         );
 
         // Add a small delay between batches if not the last batch
@@ -505,14 +476,12 @@ const handleServerSync = async ({
       }
     }
 
-    logger.debug(
-      `Successfully synced standardized world structure for ${world.name}`,
-    );
+    logger.debug(`Successfully synced standardized world structure for ${world.name}`);
   } catch (error) {
     logger.error(
       `Error processing standardized server data: ${
         error instanceof Error ? error.message : String(error)
-      }`,
+      }`
     );
   }
 };
@@ -531,9 +500,9 @@ const controlMessageHandler = async ({
 }: {
   runtime: IAgentRuntime;
   message: {
-    type: "control";
+    type: 'control';
     payload: {
-      action: "enable_input" | "disable_input";
+      action: 'enable_input' | 'disable_input';
       target?: string;
     };
     roomId: UUID;
@@ -542,7 +511,7 @@ const controlMessageHandler = async ({
 }) => {
   try {
     logger.debug(
-      `[controlMessageHandler] Processing control message: ${message.payload.action} for room ${message.roomId}`,
+      `[controlMessageHandler] Processing control message: ${message.payload.action} for room ${message.roomId}`
     );
 
     // Here we would use a WebSocket service to send the control message to the frontend
@@ -551,17 +520,15 @@ const controlMessageHandler = async ({
     // Get any registered WebSocket service
     const serviceNames = Array.from(runtime.getAllServices().keys());
     const websocketServiceName = serviceNames.find(
-      (name) =>
-        name.toLowerCase().includes("websocket") ||
-        name.toLowerCase().includes("socket"),
+      (name) => name.toLowerCase().includes('websocket') || name.toLowerCase().includes('socket')
     );
 
     if (websocketServiceName) {
       const websocketService = runtime.getService(websocketServiceName);
-      if (websocketService && "sendMessage" in websocketService) {
+      if (websocketService && 'sendMessage' in websocketService) {
         // Send the control message through the WebSocket service
         await (websocketService as any).sendMessage({
-          type: "controlMessage",
+          type: 'controlMessage',
           payload: {
             action: message.payload.action,
             target: message.payload.target,
@@ -570,22 +537,16 @@ const controlMessageHandler = async ({
         });
 
         logger.debug(
-          `[controlMessageHandler] Control message ${message.payload.action} sent successfully`,
+          `[controlMessageHandler] Control message ${message.payload.action} sent successfully`
         );
       } else {
-        logger.error(
-          "[controlMessageHandler] WebSocket service does not have sendMessage method",
-        );
+        logger.error('[controlMessageHandler] WebSocket service does not have sendMessage method');
       }
     } else {
-      logger.error(
-        "[controlMessageHandler] No WebSocket service found to send control message",
-      );
+      logger.error('[controlMessageHandler] No WebSocket service found to send control message');
     }
   } catch (error) {
-    logger.error(
-      `[controlMessageHandler] Error processing control message: ${error}`,
-    );
+    logger.error(`[controlMessageHandler] Error processing control message: ${error}`);
   }
 };
 
@@ -627,7 +588,7 @@ const events = {
         payload.worldId,
         payload.roomId,
         payload.metadata.type,
-        payload.source,
+        payload.source
       );
     },
   ],
@@ -640,7 +601,7 @@ const events = {
         if (entity) {
           entity.metadata = {
             ...entity.metadata,
-            status: "INACTIVE",
+            status: 'INACTIVE',
             leftAt: Date.now(),
           };
           await payload.runtime.updateEntity(entity);
@@ -654,20 +615,14 @@ const events = {
 
   [EventType.ACTION_STARTED]: [
     async (payload: ActionEventPayload) => {
-      logger.debug(
-        `Action started: ${payload.actionName} (${payload.actionId})`,
-      );
+      logger.debug(`Action started: ${payload.actionName} (${payload.actionId})`);
     },
   ],
 
   [EventType.ACTION_COMPLETED]: [
     async (payload: ActionEventPayload) => {
-      const status = payload.error
-        ? `failed: ${payload.error.message}`
-        : "completed";
-      logger.debug(
-        `Action ${status}: ${payload.actionName} (${payload.actionId})`,
-      );
+      const status = payload.error ? `failed: ${payload.error.message}` : 'completed';
+      logger.debug(`Action ${status}: ${payload.actionName} (${payload.actionId})`);
     },
   ],
 
@@ -724,22 +679,22 @@ function getFilesRecursively(dir: string, extensions: string[]): string[] {
 function loadDocumentation(directoryPath: string): string[] {
   try {
     const basePath = path.resolve(directoryPath);
-    const files = getFilesRecursively(basePath, [".md", ".mdx"]);
+    const files = getFilesRecursively(basePath, ['.md', '.mdx']);
 
     return files
       .map((filePath) => {
         try {
           const relativePath = path.relative(basePath, filePath);
-          const content = fs.readFileSync(filePath, "utf-8");
+          const content = fs.readFileSync(filePath, 'utf-8');
           return content;
         } catch (error) {
           logger.warn(`Error reading file ${filePath}:`, error);
-          return "";
+          return '';
         }
       })
       .filter((content) => content.length > 0);
   } catch (error) {
-    console.error("Error loading documentation:", error);
+    console.error('Error loading documentation:', error);
     return [];
   }
 }
@@ -786,117 +741,104 @@ const initCharacter = async ({
 };
 
 export const ragPlugin: Plugin = {
-  name: "rag",
-  description: "RAG plugin with basic actions and evaluators",
+  name: 'rag',
+  description: 'RAG plugin with basic actions and evaluators',
   events,
   init: async (config, runtime: IAgentRuntime) => {
-    console.log("*** Initializing agent...");
-    const repoDirName = process.env.REPO_DIR_NAME || "elizaos";
-    const workspaceRoot = path.resolve(__dirname, "..");
+    console.log('*** Initializing agent...');
+    const repoDirName = process.env.REPO_DIR_NAME || 'elizaos';
+    const workspaceRoot = path.resolve(__dirname, '..');
     const repoPath = path.join(workspaceRoot, repoDirName);
-    const repoUrl =
-      process.env.REPO_URL || "https://github.com/elizaos/eliza.git";
-    const branch = process.env.REPO_BRANCH || "v2-develop";
+    const repoUrl = process.env.REPO_URL || 'https://github.com/elizaos/eliza.git';
+    const branch = process.env.REPO_BRANCH || 'v2-develop';
 
     logger.info(`Checking for ElizaOS repository at: ${repoPath}`);
 
-    try {
-      if (!fs.existsSync(repoPath)) {
-        logger.info(
-          `Repository not found. Cloning ${branch} branch from ${repoUrl}...`,
-        );
-        execSync(
-          `git clone --depth 1 --branch ${branch} ${repoUrl} ${repoDirName}`,
-          {
-            cwd: workspaceRoot,
-            stdio: "inherit",
-          },
-        );
-        logger.info("Repository cloned successfully.");
-      } else {
-        logger.info(
-          "Repository found. Checking out branch and pulling latest changes...",
-        );
-        try {
-          execSync(`git checkout ${branch}`, {
-            cwd: repoPath,
-            stdio: "inherit",
-          });
-        } catch (checkoutError) {
-          logger.warn(
-            `Failed to checkout ${branch} (maybe already on it or stash needed?), attempting pull anyway: ${checkoutError}`,
-          );
-        }
-        try {
-          execSync(`git pull origin ${branch}`, {
-            cwd: repoPath,
-            stdio: "inherit",
-          });
-          logger.info(`Pulled latest changes from origin/${branch}.`);
-        } catch (pullError) {
-          logger.error(
-            `Failed to pull changes for ${branch}: ${pullError}. Continuing with local version.`,
-          );
-        }
-      }
+    logger.info('Initializing character...');
+    await initCharacter({ runtime });
+    logger.info('Character initialized.');
+    setTimeout(async () => {
+      console.log('*** Loading documentation...');
+      try {
+        // if (!fs.existsSync(repoPath)) {
+        //   logger.info(`Repository not found. Cloning ${branch} branch from ${repoUrl}...`);
+        //   execSync(`git clone --depth 1 --branch ${branch} ${repoUrl} ${repoDirName}`, {
+        //     cwd: workspaceRoot,
+        //     stdio: 'inherit',
+        //   });
+        //   logger.info('Repository cloned successfully.');
+        // } else {
+        //   logger.info('Repository found. Checking out branch and pulling latest changes...');
+        //   try {
+        //     execSync(`git checkout ${branch}`, {
+        //       cwd: repoPath,
+        //       stdio: 'inherit',
+        //     });
+        //   } catch (checkoutError) {
+        //     logger.warn(
+        //       `Failed to checkout ${branch} (maybe already on it or stash needed?), attempting pull anyway: ${checkoutError}`
+        //     );
+        //   }
+        //   try {
+        //     execSync(`git pull origin ${branch}`, {
+        //       cwd: repoPath,
+        //       stdio: 'inherit',
+        //     });
+        //     logger.info(`Pulled latest changes from origin/${branch}.`);
+        //   } catch (pullError) {
+        //     logger.error(
+        //       `Failed to pull changes for ${branch}: ${pullError}. Continuing with local version.`
+        //     );
+        //   }
+        // }
 
-      const docsPath = path.join(repoPath, "packages", "docs", "docs");
-      logger.info(`Attempting to load documentation from: ${docsPath}`);
+        const docsPath = path.join(repoPath, 'packages', 'docs', 'docs');
+        logger.info(`Attempting to load documentation from: ${docsPath}`);
 
-      if (fs.existsSync(docsPath)) {
-        logger.debug("Loading documentation...");
-        const docKnowledge = loadDocumentation(docsPath);
-        if (docKnowledge.length > 0) {
-          logger.info(
-            `Loaded ${docKnowledge.length} documentation files. Adding to knowledge base...`,
-          );
-          let addedCount = 0;
-          for (const docContent of docKnowledge) {
-            const knowledgeItem: KnowledgeItem = {
-              id: uuidv4() as UUID,
-              content: { text: docContent },
-            };
-            try {
-              const defaultKnowledgeOptions = {
-                targetTokens: 1500,
-                overlap: 200,
-                modelContextSize: 4096,
+        if (fs.existsSync(docsPath)) {
+          logger.debug('Loading documentation...');
+          const docKnowledge = loadDocumentation(docsPath);
+          if (docKnowledge.length > 0) {
+            logger.info(
+              `Loaded ${docKnowledge.length} documentation files. Adding to knowledge base...`
+            );
+            let addedCount = 0;
+            for (const docContent of docKnowledge) {
+              const knowledgeItem: KnowledgeItem = {
+                id: v4() as UUID,
+                content: { text: docContent },
               };
+              try {
+                const defaultKnowledgeOptions = {
+                  targetTokens: 8000,
+                  overlap: 500,
+                  modelContextSize: 64000,
+                };
 
-              await runtime.addKnowledge(
-                knowledgeItem,
-                defaultKnowledgeOptions,
-              );
-              addedCount++;
-            } catch (addError) {
-              logger.error(`Failed to add knowledge item: ${addError}`);
+                await runtime.addKnowledge(knowledgeItem, defaultKnowledgeOptions);
+                addedCount++;
+              } catch (addError) {
+                logger.error(`Failed to add knowledge item: ${addError}`);
+              }
             }
+            logger.info(
+              `Successfully added ${addedCount}/${docKnowledge.length} documentation files to knowledge base.`
+            );
+          } else {
+            logger.warn(`No documentation files found or loaded from ${docsPath}.`);
           }
-          logger.info(
-            `Successfully added ${addedCount}/${docKnowledge.length} documentation files to knowledge base.`,
-          );
         } else {
           logger.warn(
-            `No documentation files found or loaded from ${docsPath}.`,
+            `Documentation directory not found: ${docsPath}. Cannot load documentation knowledge.`
           );
         }
-      } else {
-        logger.warn(
-          `Documentation directory not found: ${docsPath}. Cannot load documentation knowledge.`,
-        );
+      } catch (error) {
+        logger.error(`Failed to clone or update repository: ${error}`);
+        logger.warn('Proceeding without loading documentation knowledge due to repository error.');
       }
-    } catch (error) {
-      logger.error(`Failed to clone or update repository: ${error}`);
-      logger.warn(
-        "Proceeding without loading documentation knowledge due to repository error.",
-      );
-    }
-
-    logger.info("Initializing character...");
-    await initCharacter({ runtime });
-    logger.info("Character initialized.");
+    }, 5000);
   },
-  providers: [knowledgeProvider],
+  providers: [knowledgeProvider, recentMessagesProvider],
 };
 
 export default ragPlugin;

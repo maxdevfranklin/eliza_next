@@ -40,7 +40,8 @@ Chat with an Eliza agent about your docs
 
     # API Keys (required for elizaos backend)
     # Add these to the .env file for your elizaos instance, not necessarily this frontend's .env
-    ANTHROPIC_API_KEY=your_anthropic_api_key
+    # You can use just OpenAI, but Groq is *really* fast -- however we need OpenAI for the embeddings
+    GROQ_API_KEY=your_anthropic_api_key
     OPENAI_API_KEY=your_openai_api_key
     ```
 
