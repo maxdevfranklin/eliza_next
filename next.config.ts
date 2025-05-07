@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/start',
-        destination: 'https://eliza.how/eliza/',
+        destination: 'https://ai.eliza.how/eliza/',
         permanent: false,
       },
       {
