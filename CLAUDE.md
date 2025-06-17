@@ -6,7 +6,7 @@ This file contains project-specific configuration and preferences for Claude Cod
 
 ## PROJECT INFORMATION
 - **Project Name:** Eliza Next.js Starter
-- **Working Directory:** `/Users/studio/Documents/GitHub/eliza-nextjs-starter`
+- **Working Directory:** `/Users/{user}/Documents/GitHub/eliza-nextjs-starter`
 - **Git Repository:** Yes
 - **Main Branch:** `main`
 - **Project Type:** Hybrid Next.js Web App + ElizaOS Agent Package
