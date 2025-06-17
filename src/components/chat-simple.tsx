@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
@@ -13,8 +13,7 @@ import SocketIOManager, {
   MessageBroadcastData,
 } from "@/lib/socketio-manager";
 import type { ChatMessage } from "@/types/chat-message";
-import { getRoomMemories, pingServer, getOrCreateDMChannel } from "@/lib/api-client";
-import { generateQueryRoomId } from "@/lib/uuid-utils";
+import { getChannelMessages, getRoomMemories, pingServer } from "@/lib/api-client";
 
 // Simple spinner component
 const LoadingSpinner = () => (
@@ -40,9 +39,12 @@ const LoadingSpinner = () => (
   </svg>
 );
 
-export const Chat = () => {
-  const searchParams = useSearchParams();
-  const query = searchParams.get("q") || "";
+interface ChatProps {
+  sessionId?: string;
+}
+
+export const Chat = ({ sessionId: propSessionId }: ChatProps = {}) => {
+  const router = useRouter();
 
   // --- Environment Configuration ---
   const agentId = process.env.NEXT_PUBLIC_AGENT_ID;
@@ -55,28 +57,54 @@ export const Chat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [inputDisabled, setInputDisabled] = useState<boolean>(false);
-  const [roomId, setRoomId] = useState<string | null>(null);
-  const [, setCurrentDMChannel] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string | null>(
+    propSessionId || null,
+  );
+  const [sessionData, setSessionData] = useState<any>(null);
+  const [channelId, setChannelId] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
   const [isAgentThinking, setIsAgentThinking] = useState<boolean>(false);
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
-  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [agentStatus, setAgentStatus] = useState<'checking' | 'ready' | 'error'>('checking');
-  const [showSessionSwitcher, setShowSessionSwitcher] = useState<boolean>(false);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connecting" | "connected" | "error"
+  >("connecting");
+  const [serverStatus, setServerStatus] = useState<
+    "checking" | "online" | "offline"
+  >("checking");
+  const [agentStatus, setAgentStatus] = useState<
+    "checking" | "ready" | "error"
+  >("checking");
+  const [showSessionSwitcher, setShowSessionSwitcher] =
+    useState<boolean>(false);
 
   // --- Refs ---
   const initStartedRef = useRef(false);
   const socketIOManager = SocketIOManager.getInstance();
 
+  // Format time ago utility
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
   // Initialize user entity on client side only to avoid hydration mismatch
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedEntity = localStorage.getItem('elizaHowUserEntity');
+    if (typeof window !== "undefined") {
+      const storedEntity = localStorage.getItem("elizaHowUserEntity");
       if (storedEntity) {
         setUserEntity(storedEntity);
       } else {
         const newEntity = uuidv4();
-        localStorage.setItem('elizaHowUserEntity', newEntity);
+        localStorage.setItem("elizaHowUserEntity", newEntity);
         setUserEntity(newEntity);
       }
     }
@@ -85,111 +113,186 @@ export const Chat = () => {
   // --- Check Server Status ---
   useEffect(() => {
     if (!agentId) return; // Guard against missing config
-    
+
     const checkServer = async () => {
       try {
         console.log("[Chat] Checking server status...");
         const isOnline = await pingServer();
         console.log("[Chat] Server ping result:", isOnline);
-        setServerStatus(isOnline ? 'online' : 'offline');
+        setServerStatus(isOnline ? "online" : "offline");
         if (!isOnline) {
-          setConnectionStatus('error');
+          setConnectionStatus("error");
         }
       } catch (error) {
         console.error("[Chat] Server check failed:", error);
-        setServerStatus('offline');
-        setConnectionStatus('error');
+        setServerStatus("offline");
+        setConnectionStatus("error");
       }
     };
 
     checkServer();
   }, [agentId]);
 
-  // --- Generate Room ID and Reset Session State ---
+  // Function to create a new chat session
+  const createNewSession = useCallback(
+    async (initialMessage?: string) => {
+      if (!userEntity || !agentId) return null;
+
+      try {
+        console.log(
+          `[Chat] Creating new session with initial message: "${initialMessage}"`,
+        );
+
+        const response = await fetch("/api/chat-session/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: userEntity,
+            initialMessage: initialMessage,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create session");
+        }
+
+        const result = await response.json();
+        const newSessionId = result.data.sessionId;
+        const newChannelId = result.data.channelId;
+
+        console.log(
+          `[Chat] Created new session: ${newSessionId} with channel: ${newChannelId}`,
+        );
+
+        // Navigate to the new session
+        router.push(`/chat/${newSessionId}`);
+
+        return { sessionId: newSessionId, channelId: newChannelId };
+      } catch (error) {
+        console.error("[Chat] Failed to create new session:", error);
+        return null;
+      }
+    },
+    [userEntity, agentId, router],
+  );
+
+  // --- Load Session Data ---
   useEffect(() => {
-    if (!userEntity || !agentId) return;
-    
-    // Reset session state for new query/conversation
+    if (!sessionId || !userEntity || !agentId) return;
+
+    // Reset session state for new session
     initStartedRef.current = false;
     setMessages([]);
-    setIsLoadingHistory(false);
+    setIsLoadingHistory(true);
     setIsAgentThinking(false);
-    
-    if (query) {
-      // Generate a unique room ID for each query to create isolated sessions
-      const queryRoomId = generateQueryRoomId(userEntity, query);
-      setRoomId(queryRoomId);
-      console.log(`[Chat] Generated unique room ID: ${queryRoomId} for query: "${query}"`);
-      console.log(`[Chat] This creates a new isolated chat session for this specific query`);
-    } else {
-      // Use a default room for general chat (no query)
-      setRoomId(`${agentId}-${userEntity}-general`);
-      console.log(`[Chat] Using general chat room (no specific query)`);
-    }
-  }, [query, userEntity, agentId]);
+
+    const loadSession = async () => {
+      try {
+        console.log(`[Chat] Loading session: ${sessionId}`);
+
+        const response = await fetch(
+          `/api/chat-session/${sessionId}?userId=${encodeURIComponent(userEntity)}`,
+        );
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.error(`[Chat] Session ${sessionId} not found`);
+            // Redirect to home page for invalid sessions
+            router.push("/");
+            return;
+          }
+          throw new Error("Failed to load session");
+        }
+
+        const result = await response.json();
+        const session = result.data;
+
+        setSessionData(session);
+        setChannelId(session.channelId);
+
+        console.log(
+          `[Chat] Loaded session: ${session.title} (${session.messageCount} messages)`,
+        );
+      } catch (error) {
+        console.error("[Chat] Failed to load session:", error);
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadSession();
+  }, [sessionId, userEntity, agentId, router]);
 
   // --- Initialize Socket Connection ---
   useEffect(() => {
-    if (!userEntity || !agentId || serverStatus !== 'online') {
+    if (!userEntity || !agentId || serverStatus !== "online") {
       return;
     }
 
     const initializeConnection = async () => {
       console.log("[Chat] Initializing connection...");
-      setConnectionStatus('connecting');
-      
+      setConnectionStatus("connecting");
+
       try {
         // Step 1: Add agent to centralized channel
         const centralChannelId = "00000000-0000-0000-0000-000000000000";
-        
+
         console.log("[Chat] Adding agent to centralized channel...");
-        setAgentStatus('checking');
-        
+        setAgentStatus("checking");
+
         try {
-          const addAgentResponse = await fetch(`/api/eliza/messaging/central-channels/${centralChannelId}/agents`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
+          const addAgentResponse = await fetch(
+            `/api/eliza/messaging/central-channels/${centralChannelId}/agents`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                agentId: agentId,
+              }),
             },
-            body: JSON.stringify({
-              agentId: agentId
-            })
-          });
-          
+          );
+
           if (addAgentResponse.ok) {
-            console.log("[Chat] ✅ Agent successfully added to centralized channel");
-            setAgentStatus('ready');
+            console.log(
+              "[Chat] ✅ Agent successfully added to centralized channel",
+            );
+            setAgentStatus("ready");
           } else {
             const errorText = await addAgentResponse.text();
-            console.warn("[Chat] ⚠️ Failed to add agent to channel:", errorText);
+            console.warn(
+              "[Chat] ⚠️ Failed to add agent to channel:",
+              errorText,
+            );
             // Agent might already be in channel, treat as success
-            setAgentStatus('ready');
+            setAgentStatus("ready");
           }
         } catch (error) {
           console.warn("[Chat] ⚠️ Error adding agent to channel:", error);
           // Continue anyway but mark as potential issue
-          setAgentStatus('error');
+          setAgentStatus("error");
         }
 
         // Step 2: Initialize socket connection
         console.log("[Chat] Initializing socket connection...");
         socketIOManager.initialize(userEntity, serverId);
-        
+
         // Step 3: Check connection status
         const checkConnection = () => {
           if (socketIOManager.isSocketConnected()) {
             console.log("[Chat] ✅ Socket connected successfully");
-            setConnectionStatus('connected');
+            setConnectionStatus("connected");
           } else {
             setTimeout(checkConnection, 1000); // Check again in 1 second
           }
         };
-        
+
         checkConnection();
-        
       } catch (error) {
         console.error("[Chat] ❌ Failed to initialize connection:", error);
-        setConnectionStatus('error');
+        setConnectionStatus("error");
       }
     };
 
@@ -198,7 +301,7 @@ export const Chat = () => {
 
   // --- Set up Socket Event Listeners ---
   useEffect(() => {
-    if (connectionStatus !== 'connected' || !roomId) {
+    if (connectionStatus !== "connected" || !channelId || !sessionId) {
       return;
     }
 
@@ -207,24 +310,22 @@ export const Chat = () => {
     // Message broadcast handler
     const handleMessageBroadcast = (data: MessageBroadcastData) => {
       console.log("[Chat] Received message broadcast:", data);
-      
+
       // Skip our own messages to avoid duplicates
       if (data.senderId === userEntity) {
         console.log("[Chat] Skipping our own message broadcast");
         return;
       }
-      
-      // Check if this is an agent message (either by sender ID or by coming from centralized channel)
-      const isAgentMessage = data.senderId === agentId || 
-                           data.channelId === "00000000-0000-0000-0000-000000000000" ||
-                           data.roomId === "00000000-0000-0000-0000-000000000000";
-      
+
+      // Check if this is an agent message by sender ID
+      const isAgentMessage = data.senderId === agentId;
+
       const message: ChatMessage = {
         id: data.id || uuidv4(),
         name: data.senderName || (isAgentMessage ? "Agent" : "User"),
         text: data.text,
         senderId: data.senderId,
-        roomId: data.roomId || data.channelId || roomId,
+        roomId: data.roomId || data.channelId || channelId,
         createdAt: data.createdAt || Date.now(),
         source: data.source,
         thought: data.thought,
@@ -234,7 +335,7 @@ export const Chat = () => {
 
       console.log("[Chat] Adding message:", { isAgentMessage, message });
       setMessages((prev) => [...prev, message]);
-      
+
       // If this was an agent response, stop the thinking indicator
       if (isAgentMessage) {
         setIsAgentThinking(false);
@@ -244,10 +345,10 @@ export const Chat = () => {
     // Control message handler
     const handleControlMessage = (data: ControlMessageData) => {
       console.log("[Chat] Received control message:", data);
-      
-      if (data.action === 'disable_input') {
+
+      if (data.action === "disable_input") {
         setInputDisabled(true);
-      } else if (data.action === 'enable_input') {
+      } else if (data.action === "enable_input") {
         setInputDisabled(false);
       }
     };
@@ -260,32 +361,29 @@ export const Chat = () => {
     };
 
     // Attach event listeners
-    socketIOManager.on('messageBroadcast', handleMessageBroadcast);
-    socketIOManager.on('controlMessage', handleControlMessage);
-    socketIOManager.on('messageComplete', handleMessageComplete);
+    socketIOManager.on("messageBroadcast", handleMessageBroadcast);
+    socketIOManager.on("controlMessage", handleControlMessage);
+    socketIOManager.on("messageComplete", handleMessageComplete);
 
-    // Join the room and also join as channel if we have a channelId
-    socketIOManager.joinRoom(roomId);
-    
+    // Join the session channel
+    socketIOManager.joinChannel(channelId, serverId);
+
     // Set the active session channel ID for message filtering
-    socketIOManager.setActiveSessionChannelId(roomId);
-    console.log("[Chat] Set active session channel ID:", roomId);
-    
-    // Join the centralized bus channel (always 00000000-0000-0000-0000-000000000000)
-    const centralChannelId = "00000000-0000-0000-0000-000000000000";
-    console.log("[Chat] Joining centralized bus channel:", centralChannelId);
-    socketIOManager.joinChannel(centralChannelId, serverId);
+    socketIOManager.setActiveSessionChannelId(channelId);
+    console.log("[Chat] Set active session channel ID:", channelId);
+
+    // For DM sessions, we don't need to join the central channel
+    // The agent should respond directly to the session channel
 
     // Cleanup function
     return () => {
-      socketIOManager.off('messageBroadcast', handleMessageBroadcast);
-      socketIOManager.off('controlMessage', handleControlMessage);
-      socketIOManager.off('messageComplete', handleMessageComplete);
-      socketIOManager.leaveRoom(roomId);
-      socketIOManager.leaveChannel("00000000-0000-0000-0000-000000000000");
+      socketIOManager.off("messageBroadcast", handleMessageBroadcast);
+      socketIOManager.off("controlMessage", handleControlMessage);
+      socketIOManager.off("messageComplete", handleMessageComplete);
+      socketIOManager.leaveChannel(channelId);
       socketIOManager.clearActiveSessionChannelId();
     };
-  }, [connectionStatus, roomId, agentId, userEntity, socketIOManager]);
+  }, [connectionStatus, channelId, agentId, userEntity, socketIOManager]);
 
   // --- Send Message Logic ---
   const sendMessage = useCallback(
@@ -293,14 +391,14 @@ export const Chat = () => {
       if (
         !messageText.trim() ||
         !userEntity ||
-        !roomId ||
+        !channelId ||
         inputDisabled ||
-        connectionStatus !== 'connected'
+        connectionStatus !== "connected"
       ) {
         console.warn("[Chat] Cannot send message:", {
           hasText: !!messageText.trim(),
           hasUserEntity: !!userEntity,
-          hasRoomId: !!roomId,
+          hasChannelId: !!channelId,
           inputDisabled,
           connectionStatus,
         });
@@ -312,7 +410,7 @@ export const Chat = () => {
         name: USER_NAME,
         text: messageText,
         senderId: userEntity,
-        roomId: roomId,
+        roomId: channelId,
         createdAt: Date.now(),
         source: CHAT_SOURCE,
         isLoading: false,
@@ -322,20 +420,16 @@ export const Chat = () => {
       setIsAgentThinking(true);
       setInputDisabled(true);
 
-      // Send message via socket - use central channel but tag with session channel ID
-      const centralChannelId = "00000000-0000-0000-0000-000000000000";
-      const sessionChannelId = roomId; // Use room ID as session channel ID
-      
-      console.log("[Chat] Sending message to central channel with session ID:", { 
-        messageText, 
-        centralChannelId, 
-        sessionChannelId, 
-        source: CHAT_SOURCE 
+      // Send message directly to the session's channel
+      console.log("[Chat] Sending message to session channel:", {
+        messageText,
+        channelId,
+        source: CHAT_SOURCE,
       });
-      
-      // Send to centralized bus channel but tag with session channel ID
-      socketIOManager.sendChannelMessage(messageText, centralChannelId, CHAT_SOURCE, sessionChannelId);
-      
+
+      // Send to the session's specific channel
+      socketIOManager.sendChannelMessage(messageText, channelId, CHAT_SOURCE);
+
       // Add a timeout to re-enable input if no response comes (safety measure)
       setTimeout(() => {
         console.log("[Chat] Timeout reached, re-enabling input");
@@ -343,71 +437,91 @@ export const Chat = () => {
         setIsAgentThinking(false);
       }, 30000); // 30 seconds timeout
     },
-    [userEntity, roomId, inputDisabled, connectionStatus, socketIOManager],
+    [userEntity, channelId, inputDisabled, connectionStatus, socketIOManager],
   );
 
   // --- Load Message History and Send Initial Query ---
   useEffect(() => {
-    if (!roomId || !agentId || !userEntity || connectionStatus !== 'connected' || initStartedRef.current) {
+    if (
+      !channelId ||
+      !agentId ||
+      !userEntity ||
+      connectionStatus !== "connected" ||
+      initStartedRef.current
+    ) {
       return;
     }
-    
+
     initStartedRef.current = true;
     setIsLoadingHistory(true);
 
-    console.log(`[Chat] Initializing session for room: ${roomId}`);
+    console.log(`[Chat] Loading message history for channel: ${channelId}`);
 
-    // First, create or get DM channel record for this session
-    const initializeSession = async () => {
+    // Load message history - try channel messages first, fallback to room memories
+    const loadMessageHistory = async () => {
       try {
-        console.log(`[Chat] Creating/getting DM channel for session: ${roomId}`);
-        const dmChannelResult = await getOrCreateDMChannel(userEntity, agentId, roomId);
-        
-        if (dmChannelResult) {
-          setCurrentDMChannel(dmChannelResult.channel);
-          console.log(`[Chat] DM channel ${dmChannelResult.isNew ? 'created' : 'found'}:`, dmChannelResult.channel.id);
-        } else {
-          console.warn(`[Chat] Failed to create/get DM channel for session: ${roomId}`);
+        // First try the channel messages API (matches new message format)
+        const channelMessages = await getChannelMessages(channelId, 50);
+        if (channelMessages.length > 0) {
+          console.log(`[Chat] Loaded ${channelMessages.length} channel messages`);
+          return channelMessages;
         }
+        
+        // Fallback to room memories if channel messages are empty
+        console.log('[Chat] No channel messages found, trying room memories...');
+        const roomMessages = await getRoomMemories(agentId, channelId, 50);
+        console.log(`[Chat] Loaded ${roomMessages.length} room memory messages`);
+        return roomMessages;
       } catch (error) {
-        console.error(`[Chat] Error creating/getting DM channel:`, error);
+        console.error('[Chat] Error loading message history:', error);
+        return [];
       }
-
-      // Load message history
-      console.log(`[Chat] Loading message history for room: ${roomId}`);
-      return getRoomMemories(agentId, roomId, 50);
     };
 
-    initializeSession()
+    loadMessageHistory()
       .then((loadedMessages) => {
-        console.log(`[Chat] Loaded ${loadedMessages.length} messages from history`);
+        console.log(
+          `[Chat] Loaded ${loadedMessages.length} messages from history`,
+        );
         setMessages(loadedMessages);
-        
-        // If there's a query and no existing messages, send it as first message for new session
-        if (query && loadedMessages.length === 0) {
-          console.log(`[Chat] New session detected - sending query as first message: ${query}`);
+
+        // If there's an initial message from session creation and no existing messages, send it
+        if (
+          sessionData?.metadata?.initialMessage &&
+          loadedMessages.length === 0
+        ) {
+          console.log(
+            `[Chat] New session detected - sending initial message: ${sessionData.metadata.initialMessage}`,
+          );
           setTimeout(() => {
-            sendMessage(query);
+            sendMessage(sessionData.metadata.initialMessage);
           }, 500); // Small delay to ensure everything is ready
-        } else if (query && loadedMessages.length > 0) {
-          console.log(`[Chat] Resuming existing session with ${loadedMessages.length} messages for query: ${query}`);
         }
       })
       .catch((error) => {
         console.error("[Chat] Failed to load message history:", error);
-        
-        // Even if history loading fails, send query if present
-        if (query) {
-          console.log(`[Chat] Sending query as first message after history load error: ${query}`);
+
+        // Even if history loading fails, send initial message if present
+        if (sessionData?.metadata?.initialMessage) {
+          console.log(
+            `[Chat] Sending initial message despite history loading failure: ${sessionData.metadata.initialMessage}`,
+          );
           setTimeout(() => {
-            sendMessage(query);
-          }, 500);
+            sendMessage(sessionData.metadata.initialMessage);
+          }, 1000);
         }
       })
       .finally(() => {
         setIsLoadingHistory(false);
       });
-  }, [roomId, agentId, userEntity, connectionStatus, query, sendMessage]);
+  }, [
+    channelId,
+    agentId,
+    userEntity,
+    connectionStatus,
+    sessionData,
+    sendMessage,
+  ]);
 
   // --- Handle Form Submit ---
   const handleSubmit = useCallback(
@@ -423,7 +537,7 @@ export const Chat = () => {
 
   // --- Render Connection Status ---
   const renderConnectionStatus = () => {
-    if (serverStatus === 'checking') {
+    if (serverStatus === "checking") {
       return (
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
           <LoadingSpinner />
@@ -432,15 +546,17 @@ export const Chat = () => {
       );
     }
 
-    if (serverStatus === 'offline') {
+    if (serverStatus === "offline") {
       return (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 shadow-sm">
           <div>
-            <h3 className="text-red-800 dark:text-red-200 font-semibold text-sm">Connection Failed</h3>
+            <h3 className="text-red-800 dark:text-red-200 font-semibold text-sm">
+              Connection Failed
+            </h3>
             <p className="text-red-700 dark:text-red-300 text-sm mt-1 leading-relaxed">
-              Unable to establish connection to ElizaOS server at{' '}
+              Unable to establish connection to ElizaOS server at{" "}
               <code className="bg-red-100 dark:bg-red-800/50 px-1.5 py-0.5 rounded text-xs font-mono">
-                {process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}
+                {process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000"}
               </code>
             </p>
             <p className="text-red-600 dark:text-red-400 text-xs mt-2">
@@ -451,13 +567,14 @@ export const Chat = () => {
       );
     }
 
-    if (connectionStatus === 'connecting') {
-      const statusText = agentStatus === 'checking' 
-        ? 'Setting up agent participation...' 
-        : agentStatus === 'ready' 
-        ? 'Connecting to agent...' 
-        : 'Connecting (agent setup failed)...';
-        
+    if (connectionStatus === "connecting") {
+      const statusText =
+        agentStatus === "checking"
+          ? "Setting up agent participation..."
+          : agentStatus === "ready"
+            ? "Connecting to agent..."
+            : "Connecting (agent setup failed)...";
+
       return (
         <div className="flex items-center gap-2 text-sm text-blue-600 mb-4">
           <LoadingSpinner />
@@ -466,7 +583,7 @@ export const Chat = () => {
       );
     }
 
-    if (connectionStatus === 'error') {
+    if (connectionStatus === "error") {
       return (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
           <div className="flex items-center gap-2">
@@ -480,7 +597,7 @@ export const Chat = () => {
       );
     }
 
-    if (connectionStatus === 'connected') {
+    if (connectionStatus === "connected") {
       return (
         <div className="flex items-center gap-2 text-sm text-green-600 mb-4">
           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -515,36 +632,46 @@ export const Chat = () => {
       <div className="flex-1 flex flex-col justify-center px-4">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold">Chat with ElizaOS Agent</h1>
-            {query && (
-              <button
-                onClick={() => setShowSessionSwitcher(!showSessionSwitcher)}
-                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-              >
-                {showSessionSwitcher ? 'Hide Sessions' : 'Switch Chat'}
-              </button>
-            )}
-          </div>
-          {query && (
-            <div className="text-gray-600 text-base break-words overflow-wrap-anywhere word-break-break-all">
-              <span>Query: </span>
-              <span className="font-medium">&ldquo;{query}&rdquo;</span>
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold">
+                {sessionData?.title || "Chat with ElizaOS Agent"}
+              </h1>
+              {sessionData && (
+                <div className="text-zinc-600 dark:text-zinc-400 text-sm mt-1">
+                  {sessionData.messageCount} messages • Last activity{" "}
+                  {formatTimeAgo(sessionData.lastActivity)}
+                </div>
+              )}
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => router.push("/")}
+                className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                New Chat
+              </button>
+              {sessionData && (
+                <button
+                  onClick={() => setShowSessionSwitcher(!showSessionSwitcher)}
+                  className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                >
+                  {showSessionSwitcher ? "Hide Sessions" : "Switch Chat"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Connection Status */}
-        <div className="mb-8">
-          {renderConnectionStatus()}
-        </div>
+        <div className="mb-8">{renderConnectionStatus()}</div>
 
         {/* Session Switcher */}
         {showSessionSwitcher && userEntity && (
           <div className="mb-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-            <ChatSessions 
-              userId={userEntity} 
-              currentQuery={query} 
-              showSwitcher={true} 
+            <ChatSessions
+              userId={userEntity}
+              currentSessionId={sessionId}
+              showSwitcher={true}
             />
           </div>
         )}
@@ -552,17 +679,19 @@ export const Chat = () => {
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto">
           {/* Only show history loading if we're connected and actually loading history */}
-          {connectionStatus === 'connected' && isLoadingHistory ? (
+          {connectionStatus === "connected" && isLoadingHistory ? (
             <div className="flex items-center justify-center h-32">
               <div className="flex items-center gap-2">
                 <LoadingSpinner />
-                <span className="text-gray-600">Loading conversation history...</span>
+                <span className="text-gray-600">
+                  Loading conversation history...
+                </span>
               </div>
             </div>
           ) : (
             <>
-              <ChatMessages 
-                messages={messages} 
+              <ChatMessages
+                messages={messages}
                 citationsMap={{}}
                 followUpPromptsMap={{}}
                 onFollowUpClick={(prompt) => {
@@ -588,10 +717,14 @@ export const Chat = () => {
             input={input}
             onInputChange={(e) => setInput(e.target.value)}
             onSubmit={handleSubmit}
-            isLoading={isAgentThinking || inputDisabled || connectionStatus !== 'connected'}
+            isLoading={
+              isAgentThinking ||
+              inputDisabled ||
+              connectionStatus !== "connected"
+            }
             placeholder={
-              connectionStatus === 'connected' 
-                ? "Type your message..." 
+              connectionStatus === "connected"
+                ? "Type your message..."
                 : "Connecting..."
             }
           />
@@ -599,16 +732,17 @@ export const Chat = () => {
       </div>
 
       {/* Debug Info (Only when NEXT_PUBLIC_DEBUG is enabled) */}
-      {process.env.NEXT_PUBLIC_DEBUG === 'true' && (
+      {process.env.NEXT_PUBLIC_DEBUG === "true" && (
         <div className="mt-4 p-2 bg-gray-100 rounded text-xs text-gray-600">
           <div>Agent ID: {agentId}</div>
-          <div>Room ID: {roomId}</div>
+          <div>Session ID: {sessionId}</div>
+          <div>Channel ID: {channelId}</div>
           <div>User Entity: {userEntity}</div>
           <div>Connection: {connectionStatus}</div>
           <div>Server: {serverStatus}</div>
           <div>Agent Status: {agentStatus}</div>
-          <div>Input Disabled: {inputDisabled ? 'true' : 'false'}</div>
-          <div>Agent Thinking: {isAgentThinking ? 'true' : 'false'}</div>
+          <div>Input Disabled: {inputDisabled ? "true" : "false"}</div>
+          <div>Agent Thinking: {isAgentThinking ? "true" : "false"}</div>
         </div>
       )}
     </div>

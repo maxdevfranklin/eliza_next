@@ -1,8 +1,6 @@
 "use client";
 
-import {
-  XMarkIcon
-} from "@heroicons/react/24/outline";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import Link from "next/link";
 import { useEffect, useState } from "react";

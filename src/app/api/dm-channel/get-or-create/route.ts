@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ELIZA_SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
+const ELIZA_SERVER_URL =
+  process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
 
 interface GetOrCreateDMChannelRequest {
   userId: string;
@@ -25,36 +26,40 @@ export async function POST(request: NextRequest) {
     if (!userId || !agentId) {
       return NextResponse.json(
         { error: "userId and agentId are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // First, try to find an existing DM channel for this session if sessionId is provided
     if (sessionId) {
       try {
-        const channelsResponse = await fetch(`${ELIZA_SERVER_URL}/api/messaging/central-channels`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
+        const channelsResponse = await fetch(
+          `${ELIZA_SERVER_URL}/api/messaging/central-channels`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
           },
-        });
+        );
 
         if (channelsResponse.ok) {
           const allChannels = await channelsResponse.json();
-          
-          // Look for existing channel with this session ID
+
+          // Look for existing channel with this EXACT session ID only
           const existingChannel = allChannels.find((channel: any) => {
             const metadata = channel.metadata || {};
-            return channel.id === sessionId || 
-                   metadata.sessionId === sessionId ||
-                   (metadata.isDm === true && 
-                    metadata.forAgent === agentId && 
-                    ((metadata.user1 === userId && metadata.user2 === agentId) ||
-                     (metadata.user1 === agentId && metadata.user2 === userId)));
+            return (
+              channel.id === sessionId ||
+              metadata.sessionId === sessionId
+            );
           });
 
           if (existingChannel) {
-            console.log("[DM Channel API] Found existing channel for session:", sessionId);
+            console.log(
+              "[DM Channel API] Found existing channel for session:",
+              sessionId,
+            );
             return NextResponse.json({
               success: true,
               channel: existingChannel,
@@ -63,7 +68,10 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (error) {
-        console.warn("[DM Channel API] Error checking for existing channels:", error);
+        console.warn(
+          "[DM Channel API] Error checking for existing channels:",
+          error,
+        );
         // Continue to create new channel
       }
     }
@@ -86,27 +94,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the DM channel via ElizaOS API
-    const createChannelResponse = await fetch(`${ELIZA_SERVER_URL}/api/messaging/central-channels`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const createChannelResponse = await fetch(
+      `${ELIZA_SERVER_URL}/api/messaging/central-channels`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: finalChannelId,
+          name: channelName,
+          server_id: "00000000-0000-0000-0000-000000000000", // Required server ID
+          participantCentralUserIds: [userId, agentId],
+          type: "DM", // Channel type
+          metadata: metadata,
+        }),
       },
-      body: JSON.stringify({
-        id: finalChannelId,
-        name: channelName,
-        server_id: "00000000-0000-0000-0000-000000000000", // Required server ID
-        participantCentralUserIds: [userId, agentId],
-        type: 'DM', // Channel type
-        metadata: metadata,
-      }),
-    });
+    );
 
     if (!createChannelResponse.ok) {
       const errorText = await createChannelResponse.text();
       console.error("[DM Channel API] Failed to create channel:", errorText);
       return NextResponse.json(
         { error: "Failed to create DM channel", details: errorText },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -114,19 +125,25 @@ export async function POST(request: NextRequest) {
 
     // Add agent to the channel as a participant
     try {
-      const addAgentResponse = await fetch(`${ELIZA_SERVER_URL}/api/messaging/central-channels/${finalChannelId}/agents`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const addAgentResponse = await fetch(
+        `${ELIZA_SERVER_URL}/api/messaging/central-channels/${finalChannelId}/agents`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            agentId: agentId,
+          }),
         },
-        body: JSON.stringify({
-          agentId: agentId
-        }),
-      });
+      );
 
       if (!addAgentResponse.ok) {
         const errorText = await addAgentResponse.text();
-        console.warn("[DM Channel API] Failed to add agent to channel:", errorText);
+        console.warn(
+          "[DM Channel API] Failed to add agent to channel:",
+          errorText,
+        );
         // Continue anyway - agent might already be a participant
       }
     } catch (error) {
@@ -139,19 +156,21 @@ export async function POST(request: NextRequest) {
       channel: {
         id: finalChannelId,
         name: channelName,
-        type: 'DM',
+        type: "DM",
         metadata: metadata,
         participants: [userId, agentId],
         ...channelData,
       },
       isNew: true,
     });
-
   } catch (error) {
     console.error("[DM Channel API] Error in get-or-create DM channel:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
     );
   }
 }

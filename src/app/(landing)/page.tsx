@@ -16,7 +16,7 @@ export default function Page() {
             <LandingTextarea />
           </Suspense>
         </div>
-        
+
         {/* Previous Chat Sessions */}
         <div className="max-w-2xl mx-auto w-full">
           <Suspense fallback={null}>

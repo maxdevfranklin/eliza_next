@@ -1,10 +1,10 @@
-import { createGroq } from '@ai-sdk/groq';
+import { createGroq } from "@ai-sdk/groq";
 import type {
   ModelTypeName,
   ObjectGenerationParams,
   Plugin,
   TextEmbeddingParams,
-} from '@elizaos/core';
+} from "@elizaos/core";
 import {
   type DetokenizeTextParams,
   type GenerateTextParams,
@@ -12,7 +12,7 @@ import {
   type TokenizeTextParams,
   getProviderBaseURL,
   logger,
-} from '@elizaos/core';
+} from "@elizaos/core";
 
 /**
  * Retrieves the Groq API base URL, using runtime settings or environment variables if available.
@@ -20,11 +20,12 @@ import {
  * @returns The resolved Groq API base URL.
  */
 function getBaseURL(runtime: any): string {
-  const defaultBaseURL = runtime.getSetting('GROQ_BASE_URL') || 'https://api.groq.com/openai/v1';
-  return getProviderBaseURL(runtime, 'groq', defaultBaseURL);
+  const defaultBaseURL =
+    runtime.getSetting("GROQ_BASE_URL") || "https://api.groq.com/openai/v1";
+  return getProviderBaseURL(runtime, "groq", defaultBaseURL);
 }
-import { generateObject, generateText } from 'ai';
-import { type TiktokenModel, encodingForModel } from 'js-tiktoken';
+import { generateObject, generateText } from "ai";
+import { type TiktokenModel, encodingForModel } from "js-tiktoken";
 
 /**
  * Runtime interface for the Groq plugin
@@ -51,12 +52,12 @@ function findModelName(model: ModelTypeName): TiktokenModel {
   try {
     const name =
       model === ModelType.TEXT_SMALL
-        ? (process.env.SMALL_GROQ_MODEL ?? 'llama-3.1-8b-instant')
-        : (process.env.LARGE_GROQ_MODEL ?? 'llama-3.2-90b-vision-preview');
+        ? (process.env.SMALL_GROQ_MODEL ?? "llama-3.1-8b-instant")
+        : (process.env.LARGE_GROQ_MODEL ?? "llama-3.2-90b-vision-preview");
     return name as TiktokenModel;
   } catch (error) {
-    logger.error('Error in findModelName:', error);
-    return 'llama-3.1-8b-instant' as TiktokenModel;
+    logger.error("Error in findModelName:", error);
+    return "llama-3.1-8b-instant" as TiktokenModel;
   }
 }
 
@@ -66,7 +67,7 @@ async function tokenizeText(model: ModelTypeName, prompt: string) {
     const tokens = encoding.encode(prompt);
     return tokens;
   } catch (error) {
-    logger.error('Error in tokenizeText:', error);
+    logger.error("Error in tokenizeText:", error);
     return [];
   }
 }
@@ -84,8 +85,8 @@ async function detokenizeText(model: ModelTypeName, tokens: number[]) {
     const encoding = encodingForModel(modelName);
     return encoding.decode(tokens);
   } catch (error) {
-    logger.error('Error in detokenizeText:', error);
-    return '';
+    logger.error("Error in detokenizeText:", error);
+    return "";
   }
 }
 
@@ -95,10 +96,13 @@ async function detokenizeText(model: ModelTypeName, tokens: number[]) {
  * @param retryFn The function to retry after waiting
  * @returns Result from the retry function
  */
-async function handleRateLimitError(error: Error, retryFn: () => Promise<unknown>) {
+async function handleRateLimitError(
+  error: Error,
+  retryFn: () => Promise<unknown>,
+) {
   try {
-    if (error.message.includes('Rate limit reached')) {
-      logger.warn('Groq rate limit reached', { error: error.message });
+    if (error.message.includes("Rate limit reached")) {
+      logger.warn("Groq rate limit reached", { error: error.message });
 
       // Extract retry delay from error message if possible
       let retryDelay = 10000; // Default to 10 seconds
@@ -114,15 +118,15 @@ async function handleRateLimitError(error: Error, retryFn: () => Promise<unknown
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
 
       // Retry the request
-      logger.info('Retrying request after rate limit delay');
+      logger.info("Retrying request after rate limit delay");
       return await retryFn();
     }
 
     // For other errors, log and rethrow
-    logger.error('Error with Groq API:', error);
+    logger.error("Error with Groq API:", error);
     throw error;
   } catch (retryError) {
-    logger.error('Error during retry handling:', retryError);
+    logger.error("Error during retry handling:", retryError);
     throw retryError;
   }
 }
@@ -141,7 +145,7 @@ async function generateGroqText(
     frequencyPenalty: number;
     presencePenalty: number;
     stopSequences: string[];
-  }
+  },
 ) {
   try {
     const { text: groqResponse } = await generateText({
@@ -171,8 +175,8 @@ async function generateGroqText(
         return groqRetryResponse;
       });
     } catch (retryError) {
-      logger.error('Final error in generateGroqText:', retryError);
-      return 'Error generating text. Please try again later.';
+      logger.error("Final error in generateGroqText:", retryError);
+      return "Error generating text. Please try again later.";
     }
   }
 }
@@ -183,25 +187,25 @@ async function generateGroqText(
 async function generateGroqObject(
   groq: ReturnType<typeof createGroq>,
   model: string,
-  params: ObjectGenerationParams
+  params: ObjectGenerationParams,
 ) {
   try {
     const { object } = await generateObject({
       model: groq.languageModel(model),
-      output: 'no-schema',
+      output: "no-schema",
       prompt: params.prompt,
       temperature: params.temperature,
     });
     return object;
   } catch (error: unknown) {
-    logger.error('Error generating object:', error);
+    logger.error("Error generating object:", error);
     return {};
   }
 }
 
 export const groqPlugin: Plugin = {
-  name: 'groq',
-  description: 'Groq plugin',
+  name: "groq",
+  description: "Groq plugin",
   config: {
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     SMALL_GROQ_MODEL: process.env.SMALL_GROQ_MODEL,
@@ -210,35 +214,38 @@ export const groqPlugin: Plugin = {
   },
   async init(config: Record<string, string>) {
     if (!process.env.GROQ_API_KEY) {
-      throw Error('Missing GROQ_API_KEY in environment variables');
+      throw Error("Missing GROQ_API_KEY in environment variables");
     }
   },
   models: {
     [ModelType.TEXT_TOKENIZER_ENCODE]: async (
       _runtime,
-      { prompt, modelType = ModelType.TEXT_LARGE }: TokenizeTextParams
+      { prompt, modelType = ModelType.TEXT_LARGE }: TokenizeTextParams,
     ) => {
       try {
         return await tokenizeText(modelType ?? ModelType.TEXT_LARGE, prompt);
       } catch (error) {
-        logger.error('Error in TEXT_TOKENIZER_ENCODE model:', error);
+        logger.error("Error in TEXT_TOKENIZER_ENCODE model:", error);
         // Return empty array instead of crashing
         return [];
       }
     },
     [ModelType.TEXT_TOKENIZER_DECODE]: async (
       _runtime,
-      { tokens, modelType = ModelType.TEXT_LARGE }: DetokenizeTextParams
+      { tokens, modelType = ModelType.TEXT_LARGE }: DetokenizeTextParams,
     ) => {
       try {
         return await detokenizeText(modelType ?? ModelType.TEXT_LARGE, tokens);
       } catch (error) {
-        logger.error('Error in TEXT_TOKENIZER_DECODE model:', error);
+        logger.error("Error in TEXT_TOKENIZER_DECODE model:", error);
         // Return empty string instead of crashing
-        return '';
+        return "";
       }
     },
-    [ModelType.TEXT_SMALL]: async (runtime, { prompt, stopSequences = [] }: GenerateTextParams) => {
+    [ModelType.TEXT_SMALL]: async (
+      runtime,
+      { prompt, stopSequences = [] }: GenerateTextParams,
+    ) => {
       try {
         const temperature = 0.7;
         const frequency_penalty = 0.7;
@@ -246,17 +253,17 @@ export const groqPlugin: Plugin = {
         const max_response_length = 8000;
         const baseURL = getBaseURL(runtime);
         const groq = createGroq({
-          apiKey: runtime.getSetting('GROQ_API_KEY'),
+          apiKey: runtime.getSetting("GROQ_API_KEY"),
           fetch: runtime.fetch,
           baseURL,
         });
 
         const model =
-          runtime.getSetting('GROQ_SMALL_MODEL') ??
-          runtime.getSetting('SMALL_MODEL') ??
-          'llama-3.1-8b-instant';
+          runtime.getSetting("GROQ_SMALL_MODEL") ??
+          runtime.getSetting("SMALL_MODEL") ??
+          "llama-3.1-8b-instant";
 
-        logger.log('generating text');
+        logger.log("generating text");
         logger.log(prompt);
 
         return await generateGroqText(groq, model, {
@@ -269,8 +276,8 @@ export const groqPlugin: Plugin = {
           stopSequences,
         });
       } catch (error) {
-        logger.error('Error in TEXT_SMALL model:', error);
-        return 'Error generating text. Please try again later.';
+        logger.error("Error in TEXT_SMALL model:", error);
+        return "Error generating text. Please try again later.";
       }
     },
     [ModelType.TEXT_LARGE]: async (
@@ -282,16 +289,16 @@ export const groqPlugin: Plugin = {
         temperature = 0.7,
         frequencyPenalty = 0.7,
         presencePenalty = 0.7,
-      }: GenerateTextParams
+      }: GenerateTextParams,
     ) => {
       try {
         const model =
-          runtime.getSetting('GROQ_LARGE_MODEL') ??
-          runtime.getSetting('LARGE_MODEL') ??
-          'llama-3.2-90b';
+          runtime.getSetting("GROQ_LARGE_MODEL") ??
+          runtime.getSetting("LARGE_MODEL") ??
+          "llama-3.2-90b";
         const baseURL = getBaseURL(runtime);
         const groq = createGroq({
-          apiKey: runtime.getSetting('GROQ_API_KEY'),
+          apiKey: runtime.getSetting("GROQ_API_KEY"),
           fetch: runtime.fetch,
           baseURL,
         });
@@ -306,8 +313,8 @@ export const groqPlugin: Plugin = {
           stopSequences,
         });
       } catch (error) {
-        logger.error('Error in TEXT_LARGE model:', error);
-        return 'Error generating text. Please try again later.';
+        logger.error("Error in TEXT_LARGE model:", error);
+        return "Error generating text. Please try again later.";
       }
     },
     [ModelType.IMAGE]: async (
@@ -316,37 +323,37 @@ export const groqPlugin: Plugin = {
         prompt: string;
         n?: number;
         size?: string;
-      }
+      },
     ) => {
       try {
         const baseURL = getBaseURL(runtime);
         const response = await fetch(`${baseURL}/images/generations`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            Authorization: `Bearer ${runtime.getSetting('GROQ_API_KEY')}`,
-            'Content-Type': 'application/json',
+            Authorization: `Bearer ${runtime.getSetting("GROQ_API_KEY")}`,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             prompt: params.prompt,
             n: params.n || 1,
-            size: params.size || '1024x1024',
+            size: params.size || "1024x1024",
           }),
         });
         if (!response.ok) {
           logger.error(`Failed to generate image: ${response.statusText}`);
-          return [{ url: '' }];
+          return [{ url: "" }];
         }
         const data = await response.json();
         const typedData = data as { data: { url: string }[] };
         return typedData.data;
       } catch (error) {
-        logger.error('Error in IMAGE model:', error);
-        return [{ url: '' }];
+        logger.error("Error in IMAGE model:", error);
+        return [{ url: "" }];
       }
     },
     [ModelType.TRANSCRIPTION]: async (runtime, audioBuffer: Buffer) => {
       try {
-        logger.log('audioBuffer', audioBuffer);
+        logger.log("audioBuffer", audioBuffer);
         const baseURL = getBaseURL(runtime);
 
         // Create a FormData instance
@@ -359,71 +366,80 @@ export const groqPlugin: Plugin = {
 
         // Cast to our enhanced interface
         const enhancedFormData = formData as EnhancedFormData;
-        enhancedFormData.append('file', new Blob([audioBuffer], { type: 'audio/mp3' }));
-        enhancedFormData.append('model', 'whisper-1');
+        enhancedFormData.append(
+          "file",
+          new Blob([audioBuffer], { type: "audio/mp3" }),
+        );
+        enhancedFormData.append("model", "whisper-1");
 
         const response = await fetch(`${baseURL}/audio/transcriptions`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            Authorization: `Bearer ${runtime.getSetting('GROQ_API_KEY')}`,
+            Authorization: `Bearer ${runtime.getSetting("GROQ_API_KEY")}`,
           },
           body: formData,
         });
 
-        logger.log('response', response);
+        logger.log("response", response);
         if (!response.ok) {
           logger.error(`Failed to transcribe audio: ${response.statusText}`);
-          return 'Error transcribing audio. Please try again later.';
+          return "Error transcribing audio. Please try again later.";
         }
         const data = (await response.json()) as { text: string };
         return data.text;
       } catch (error) {
-        logger.error('Error in TRANSCRIPTION model:', error);
-        return 'Error transcribing audio. Please try again later.';
+        logger.error("Error in TRANSCRIPTION model:", error);
+        return "Error transcribing audio. Please try again later.";
       }
     },
-    [ModelType.OBJECT_SMALL]: async (runtime, params: ObjectGenerationParams) => {
+    [ModelType.OBJECT_SMALL]: async (
+      runtime,
+      params: ObjectGenerationParams,
+    ) => {
       try {
         const baseURL = getBaseURL(runtime);
         const groq = createGroq({
-          apiKey: runtime.getSetting('GROQ_API_KEY'),
+          apiKey: runtime.getSetting("GROQ_API_KEY"),
           baseURL,
         });
         const model =
-          runtime.getSetting('GROQ_SMALL_MODEL') ??
-          runtime.getSetting('SMALL_MODEL') ??
-          'llama-3.1-8b-instant';
+          runtime.getSetting("GROQ_SMALL_MODEL") ??
+          runtime.getSetting("SMALL_MODEL") ??
+          "llama-3.1-8b-instant";
 
         if (params.schema) {
-          logger.info('Using OBJECT_SMALL without schema validation');
+          logger.info("Using OBJECT_SMALL without schema validation");
         }
 
         return await generateGroqObject(groq, model, params);
       } catch (error) {
-        logger.error('Error in OBJECT_SMALL model:', error);
+        logger.error("Error in OBJECT_SMALL model:", error);
         // Return empty object instead of crashing
         return {};
       }
     },
-    [ModelType.OBJECT_LARGE]: async (runtime, params: ObjectGenerationParams) => {
+    [ModelType.OBJECT_LARGE]: async (
+      runtime,
+      params: ObjectGenerationParams,
+    ) => {
       try {
         const baseURL = getBaseURL(runtime);
         const groq = createGroq({
-          apiKey: runtime.getSetting('GROQ_API_KEY'),
+          apiKey: runtime.getSetting("GROQ_API_KEY"),
           baseURL,
         });
         const model =
-          runtime.getSetting('GROQ_LARGE_MODEL') ??
-          runtime.getSetting('LARGE_MODEL') ??
-          'llama-3.2-90b-vision-preview';
+          runtime.getSetting("GROQ_LARGE_MODEL") ??
+          runtime.getSetting("LARGE_MODEL") ??
+          "llama-3.2-90b-vision-preview";
 
         if (params.schema) {
-          logger.info('Using OBJECT_LARGE without schema validation');
+          logger.info("Using OBJECT_LARGE without schema validation");
         }
 
         return await generateGroqObject(groq, model, params);
       } catch (error) {
-        logger.error('Error in OBJECT_LARGE model:', error);
+        logger.error("Error in OBJECT_LARGE model:", error);
         // Return empty object instead of crashing
         return {};
       }
@@ -431,168 +447,190 @@ export const groqPlugin: Plugin = {
   },
   tests: [
     {
-      name: 'groq_plugin_tests',
+      name: "groq_plugin_tests",
       tests: [
         {
-          name: 'groq_test_url_and_api_key_validation',
+          name: "groq_test_url_and_api_key_validation",
           fn: async (runtime) => {
             try {
-              const baseURL = getBaseURL(runtime) ?? 'https://api.groq.com/openai/v1';
+              const baseURL =
+                getBaseURL(runtime) ?? "https://api.groq.com/openai/v1";
               const response = await fetch(`${baseURL}/models`, {
                 headers: {
-                  Authorization: `Bearer ${runtime.getSetting('GROQ_API_KEY')}`,
+                  Authorization: `Bearer ${runtime.getSetting("GROQ_API_KEY")}`,
                 },
               });
               const data = await response.json();
-              logger.log('Models Available:', (data as { data: unknown[] })?.data?.length);
+              logger.log(
+                "Models Available:",
+                (data as { data: unknown[] })?.data?.length,
+              );
               if (!response.ok) {
-                logger.error(`Failed to validate Groq API key: ${response.statusText}`);
+                logger.error(
+                  `Failed to validate Groq API key: ${response.statusText}`,
+                );
                 return;
               }
             } catch (error) {
-              logger.error('Error in groq_test_url_and_api_key_validation:', error);
+              logger.error(
+                "Error in groq_test_url_and_api_key_validation:",
+                error,
+              );
             }
           },
         },
         {
-          name: 'groq_test_text_large',
+          name: "groq_test_text_large",
           fn: async (runtime) => {
             try {
               const text = await runtime.useModel(ModelType.TEXT_LARGE, {
-                prompt: 'What is the nature of reality in 10 words?',
+                prompt: "What is the nature of reality in 10 words?",
               });
               if (text.length === 0) {
-                logger.error('Failed to generate text');
+                logger.error("Failed to generate text");
                 return;
               }
-              logger.log('generated with test_text_large:', text);
+              logger.log("generated with test_text_large:", text);
             } catch (error) {
-              logger.error('Error in test_text_large:', error);
+              logger.error("Error in test_text_large:", error);
             }
           },
         },
         {
-          name: 'groq_test_text_small',
+          name: "groq_test_text_small",
           fn: async (runtime) => {
             try {
               const text = await runtime.useModel(ModelType.TEXT_SMALL, {
-                prompt: 'What is the nature of reality in 10 words?',
+                prompt: "What is the nature of reality in 10 words?",
               });
               if (text.length === 0) {
-                logger.error('Failed to generate text');
+                logger.error("Failed to generate text");
                 return;
               }
-              logger.log('generated with test_text_small:', text);
+              logger.log("generated with test_text_small:", text);
             } catch (error) {
-              logger.error('Error in test_text_small:', error);
+              logger.error("Error in test_text_small:", error);
             }
           },
         },
         {
-          name: 'groq_test_image_generation',
+          name: "groq_test_image_generation",
           fn: async (runtime) => {
             try {
-              logger.log('groq_test_image_generation');
+              logger.log("groq_test_image_generation");
               const image = await runtime.useModel(ModelType.IMAGE, {
-                prompt: 'A beautiful sunset over a calm ocean',
+                prompt: "A beautiful sunset over a calm ocean",
                 n: 1,
-                size: '1024x1024',
+                size: "1024x1024",
               });
-              logger.log('generated with test_image_generation:', image);
+              logger.log("generated with test_image_generation:", image);
             } catch (error) {
-              logger.error('Error in test_image_generation:', error);
+              logger.error("Error in test_image_generation:", error);
             }
           },
         },
         {
-          name: 'groq_test_transcription',
+          name: "groq_test_transcription",
           fn: async (runtime) => {
             try {
-              logger.log('groq_test_transcription');
+              logger.log("groq_test_transcription");
               const response = await fetch(
-                'https://upload.wikimedia.org/wikipedia/en/4/40/Chris_Benoit_Voice_Message.ogg'
+                "https://upload.wikimedia.org/wikipedia/en/4/40/Chris_Benoit_Voice_Message.ogg",
               );
               if (!response.ok) {
-                logger.error(`Failed to fetch audio sample: ${response.statusText}`);
+                logger.error(
+                  `Failed to fetch audio sample: ${response.statusText}`,
+                );
                 return;
               }
               const arrayBuffer = await response.arrayBuffer();
               const transcription = await runtime.useModel(
                 ModelType.TRANSCRIPTION,
-                Buffer.from(new Uint8Array(arrayBuffer))
+                Buffer.from(new Uint8Array(arrayBuffer)),
               );
-              logger.log('generated with test_transcription:', transcription);
+              logger.log("generated with test_transcription:", transcription);
             } catch (error) {
-              logger.error('Error in test_transcription:', error);
+              logger.error("Error in test_transcription:", error);
             }
           },
         },
         {
-          name: 'groq_test_text_tokenizer_encode',
+          name: "groq_test_text_tokenizer_encode",
           fn: async (runtime) => {
             try {
-              const prompt = 'Hello tokenizer encode!';
-              const tokens = await runtime.useModel(ModelType.TEXT_TOKENIZER_ENCODE, { prompt });
+              const prompt = "Hello tokenizer encode!";
+              const tokens = await runtime.useModel(
+                ModelType.TEXT_TOKENIZER_ENCODE,
+                { prompt },
+              );
               if (!Array.isArray(tokens) || tokens.length === 0) {
-                logger.error('Failed to tokenize text: expected non-empty array of tokens');
-                return;
-              }
-              logger.log('Tokenized output:', tokens);
-            } catch (error) {
-              logger.error('Error in test_text_tokenizer_encode:', error);
-            }
-          },
-        },
-        {
-          name: 'groq_test_text_tokenizer_decode',
-          fn: async (runtime) => {
-            try {
-              const prompt = 'Hello tokenizer decode!';
-              // Encode the string into tokens first
-              const tokens = await runtime.useModel(ModelType.TEXT_TOKENIZER_ENCODE, { prompt });
-              // Now decode tokens back into text
-              const decodedText = await runtime.useModel(ModelType.TEXT_TOKENIZER_DECODE, {
-                tokens,
-              });
-              if (decodedText !== prompt) {
                 logger.error(
-                  `Decoded text does not match original. Expected "${prompt}", got "${decodedText}"`
+                  "Failed to tokenize text: expected non-empty array of tokens",
                 );
                 return;
               }
-              logger.log('Decoded text:', decodedText);
+              logger.log("Tokenized output:", tokens);
             } catch (error) {
-              logger.error('Error in test_text_tokenizer_decode:', error);
+              logger.error("Error in test_text_tokenizer_encode:", error);
             }
           },
         },
         {
-          name: 'groq_test_object_small',
+          name: "groq_test_text_tokenizer_decode",
+          fn: async (runtime) => {
+            try {
+              const prompt = "Hello tokenizer decode!";
+              // Encode the string into tokens first
+              const tokens = await runtime.useModel(
+                ModelType.TEXT_TOKENIZER_ENCODE,
+                { prompt },
+              );
+              // Now decode tokens back into text
+              const decodedText = await runtime.useModel(
+                ModelType.TEXT_TOKENIZER_DECODE,
+                {
+                  tokens,
+                },
+              );
+              if (decodedText !== prompt) {
+                logger.error(
+                  `Decoded text does not match original. Expected "${prompt}", got "${decodedText}"`,
+                );
+                return;
+              }
+              logger.log("Decoded text:", decodedText);
+            } catch (error) {
+              logger.error("Error in test_text_tokenizer_decode:", error);
+            }
+          },
+        },
+        {
+          name: "groq_test_object_small",
           fn: async (runtime) => {
             try {
               const object = await runtime.useModel(ModelType.OBJECT_SMALL, {
                 prompt:
-                  'Generate a JSON object representing a user profile with name, age, and hobbies',
+                  "Generate a JSON object representing a user profile with name, age, and hobbies",
                 temperature: 0.7,
               });
-              logger.log('Generated object:', object);
+              logger.log("Generated object:", object);
             } catch (error) {
-              logger.error('Error in test_object_small:', error);
+              logger.error("Error in test_object_small:", error);
             }
           },
         },
         {
-          name: 'groq_test_object_large',
+          name: "groq_test_object_large",
           fn: async (runtime) => {
             try {
               const object = await runtime.useModel(ModelType.OBJECT_LARGE, {
                 prompt:
-                  'Generate a detailed JSON object representing a restaurant with name, cuisine type, menu items with prices, and customer reviews',
+                  "Generate a detailed JSON object representing a restaurant with name, cuisine type, menu items with prices, and customer reviews",
                 temperature: 0.7,
               });
-              logger.log('Generated object:', object);
+              logger.log("Generated object:", object);
             } catch (error) {
-              logger.error('Error in test_object_large:', error);
+              logger.error("Error in test_object_large:", error);
             }
           },
         },

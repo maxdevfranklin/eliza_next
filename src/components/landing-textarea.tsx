@@ -4,7 +4,8 @@ import { ArrowUpIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 import { Button } from "@/components/button";
 import { ExamplePrompts } from "@/components/example-prompts";
@@ -12,8 +13,23 @@ import { ExamplePrompts } from "@/components/example-prompts";
 export const LandingTextarea = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [userEntity, setUserEntity] = useState<string | null>(null);
 
   const { push } = useRouter();
+
+  // Initialize user entity on client side only to avoid hydration mismatch
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedEntity = localStorage.getItem("elizaHowUserEntity");
+      if (storedEntity) {
+        setUserEntity(storedEntity);
+      } else {
+        const newEntity = uuidv4();
+        localStorage.setItem("elizaHowUserEntity", newEntity);
+        setUserEntity(newEntity);
+      }
+    }
+  }, []);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -22,28 +38,76 @@ export const LandingTextarea = () => {
     [],
   );
 
-  const handleCreateSearch = useCallback((prompt: string) => {
-    push(`/search?q=${prompt}`);
-  }, []);
+  const createNewSession = useCallback(
+    async (initialMessage: string) => {
+      if (!userEntity) {
+        console.error("User entity not available");
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        console.log(
+          `[Landing] Creating new session with message: "${initialMessage}"`,
+        );
+
+        const response = await fetch("/api/chat-session/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: userEntity,
+            initialMessage: initialMessage,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create session");
+        }
+
+        const result = await response.json();
+        const sessionId = result.data.sessionId;
+
+        console.log(`[Landing] Created new session: ${sessionId}`);
+
+        // Navigate to the new session
+        push(`/chat/${sessionId}`);
+      } catch (error) {
+        console.error("[Landing] Failed to create new session:", error);
+        setIsLoading(false);
+      }
+    },
+    [userEntity, push],
+  );
 
   const handleSubmit = useCallback(
     (e: any) => {
       try {
         e?.preventDefault();
 
-        setIsLoading(true);
-        handleCreateSearch(input);
+        if (!input.trim() || !userEntity) {
+          setIsLoading(false);
+          return;
+        }
+
+        createNewSession(input.trim());
       } catch (error) {
         console.error(error);
         setIsLoading(false);
       }
     },
-    [input],
+    [input, userEntity, createNewSession],
   );
 
-  const handlePromptSelect = useCallback((prompt: string) => {
-    handleCreateSearch(prompt);
-  }, []);
+  const handlePromptSelect = useCallback(
+    (prompt: string) => {
+      if (userEntity) {
+        createNewSession(prompt);
+      }
+    },
+    [userEntity, createNewSession],
+  );
 
   return (
     <div className="flex flex-col w-full gap-4">
@@ -108,7 +172,7 @@ export const LandingTextarea = () => {
               <Button
                 type="submit"
                 color={(input ? "blue" : "dark") as "blue" | "dark"}
-                disabled={!input || isLoading}
+                disabled={!input || !userEntity || isLoading}
                 aria-label="Submit"
                 className="size-8"
               >
