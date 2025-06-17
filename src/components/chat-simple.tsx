@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { ChatMessages } from "@/components/chat-messages";
 import { TextareaWithActions } from "@/components/textarea-with-actions";
+import { ChatSessions } from "@/components/chat-sessions";
 import { USER_NAME, CHAT_SOURCE } from "@/constants";
 import SocketIOManager, {
   ControlMessageData,
@@ -75,6 +76,7 @@ export const Chat = () => {
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [agentStatus, setAgentStatus] = useState<'checking' | 'ready' | 'error'>('checking');
+  const [showSessionSwitcher, setShowSessionSwitcher] = useState<boolean>(false);
 
   // --- Refs ---
   const initStartedRef = useRef(false);
@@ -477,7 +479,17 @@ export const Chat = () => {
       {/* Header Section - Top/Middle */}
       <div className="flex-1 flex flex-col justify-center px-4">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-2">Chat with ElizaOS Agent</h1>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-2xl font-bold">Chat with ElizaOS Agent</h1>
+            {query && (
+              <button
+                onClick={() => setShowSessionSwitcher(!showSessionSwitcher)}
+                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+              >
+                {showSessionSwitcher ? 'Hide Sessions' : 'Switch Chat'}
+              </button>
+            )}
+          </div>
           {query && (
             <div className="text-gray-600 text-base break-words overflow-wrap-anywhere word-break-break-all">
               <span>Query: </span>
@@ -490,6 +502,17 @@ export const Chat = () => {
         <div className="mb-8">
           {renderConnectionStatus()}
         </div>
+
+        {/* Session Switcher */}
+        {showSessionSwitcher && userEntity && (
+          <div className="mb-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <ChatSessions 
+              userId={userEntity} 
+              currentQuery={query} 
+              showSwitcher={true} 
+            />
+          </div>
+        )}
 
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto">
