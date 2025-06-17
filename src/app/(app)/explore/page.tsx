@@ -2,6 +2,8 @@
 
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 interface Category {
   title: string;
@@ -54,9 +56,67 @@ const categories: Category[] = [
 
 export default function Page() {
   const router = useRouter();
+  const [userEntity, setUserEntity] = useState<string | null>(null);
+
+  // Initialize user entity on client side only to avoid hydration mismatch
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedEntity = localStorage.getItem("elizaHowUserEntity");
+      if (storedEntity) {
+        setUserEntity(storedEntity);
+      } else {
+        const newEntity = uuidv4();
+        localStorage.setItem("elizaHowUserEntity", newEntity);
+        setUserEntity(newEntity);
+      }
+    }
+  }, []);
+
+  const createNewSession = useCallback(
+    async (initialMessage: string) => {
+      if (!userEntity) {
+        console.error("User entity not available");
+        return;
+      }
+
+      try {
+        console.log(
+          `[Explore] Creating new session with message: "${initialMessage}"`,
+        );
+
+        const response = await fetch("/api/chat-session/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: userEntity,
+            initialMessage: initialMessage,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create session");
+        }
+
+        const result = await response.json();
+        const sessionId = result.data.sessionId;
+
+        console.log(`[Explore] Created new session: ${sessionId}`);
+
+        // Navigate to the new session
+        router.push(`/chat/${sessionId}`);
+      } catch (error) {
+        console.error("[Explore] Failed to create new session:", error);
+      }
+    },
+    [userEntity, router],
+  );
 
   const handlePromptSelect = (prompt: string) => {
-    router.push(`/search?q=${prompt}`);
+    if (userEntity) {
+      createNewSession(prompt);
+    }
   };
 
   return (

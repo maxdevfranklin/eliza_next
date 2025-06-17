@@ -1,5 +1,5 @@
-import type { IAgentRuntime, Memory, Provider } from '@elizaos/core';
-import { addHeader } from '@elizaos/core';
+import type { IAgentRuntime, Memory, Provider } from "@elizaos/core";
+import { addHeader } from "@elizaos/core";
 
 /**
  * Represents a knowledge provider that retrieves knowledge from the knowledge base.
@@ -13,11 +13,11 @@ import { addHeader } from '@elizaos/core';
  * @returns {Object} An object containing the retrieved knowledge data, values, and text.
  */
 export const knowledgeProvider: Provider = {
-  name: 'KNOWLEDGE',
+  name: "KNOWLEDGE",
   description:
-    'Knowledge from the knowledge base that the agent knows, retrieved whenever the agent needs to answer a question about their expertise.',
+    "Knowledge from the knowledge base that the agent knows, retrieved whenever the agent needs to answer a question about their expertise.",
   get: async (runtime: IAgentRuntime, message: Memory) => {
-    console.log('*** RETRIEVING KNOWLEDGE ***');
+    console.log("*** RETRIEVING KNOWLEDGE ***");
     const knowledgeData = await runtime.getKnowledge(message);
 
     const firstFiveKnowledgeItems = knowledgeData?.slice(0, 5);
@@ -25,20 +25,22 @@ export const knowledgeProvider: Provider = {
     let knowledge =
       (firstFiveKnowledgeItems && firstFiveKnowledgeItems.length > 0
         ? addHeader(
-            '# Knowledge',
-            firstFiveKnowledgeItems.map((knowledge) => `- ${knowledge.content.text}`).join('\n')
+            "# Knowledge",
+            firstFiveKnowledgeItems
+              .map((knowledge) => `- ${knowledge.content.text}`)
+              .join("\n"),
           )
-        : '') + '\n';
+        : "") + "\n";
 
     const tokenLength = 3.5;
 
-    console.log('*** knowledge', knowledge);
+    console.log("*** knowledge", knowledge);
 
     if (knowledge.length > 4000 * tokenLength) {
       knowledge = knowledge.slice(0, 4000 * tokenLength);
     }
 
-    console.log('*** KNOWLEDGE RETRIEVED, LENGTH: ', knowledge.length, ' ***');
+    console.log("*** KNOWLEDGE RETRIEVED, LENGTH: ", knowledge.length, " ***");
 
     return {
       data: {
