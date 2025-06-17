@@ -443,41 +443,42 @@ export const Chat = () => {
   };
 
   return (
-    <div className="relative h-full w-full max-w-4xl mx-auto">
-      {/* Chat Messages - Scrollable area that takes remaining space */}
-      <div className="absolute inset-0 pb-80 overflow-y-auto">
-        <div className="px-4 pt-4">
-          {isLoadingHistory ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="flex items-center gap-2">
-                <LoadingSpinner />
-                <span className="text-gray-600">Loading conversation history...</span>
-              </div>
+    <div className="h-full w-full max-w-4xl mx-auto flex flex-col">
+      {/* Spacer to push content to bottom */}
+      <div className="flex-1"></div>
+      
+      {/* Chat Messages */}
+      <div className="flex-shrink-0 max-h-96 overflow-y-auto px-4">
+        {isLoadingHistory ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="flex items-center gap-2">
+              <LoadingSpinner />
+              <span className="text-gray-600">Loading conversation history...</span>
             </div>
-          ) : (
-            <>
-              <ChatMessages 
-                messages={messages} 
-                citationsMap={{}}
-                followUpPromptsMap={{}}
-                onFollowUpClick={(prompt) => {
-                  // Handle follow-up prompts by setting as new input
-                  setInput(prompt);
-                }}
-              />
-              {isAgentThinking && (
-                <div className="flex items-center gap-2 p-4 text-gray-600">
-                  <LoadingSpinner />
-                  <span>Agent is thinking...</span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+          </div>
+        ) : (
+          <>
+            <ChatMessages 
+              messages={messages} 
+              citationsMap={{}}
+              followUpPromptsMap={{}}
+              onFollowUpClick={(prompt) => {
+                // Handle follow-up prompts by setting as new input
+                setInput(prompt);
+              }}
+            />
+            {isAgentThinking && (
+              <div className="flex items-center gap-2 p-4 text-gray-600">
+                <LoadingSpinner />
+                <span>Agent is thinking...</span>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Bottom Section - Absolutely positioned at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 bg-inherit">
+      {/* Bottom Section - Header, Status, and Input */}
+      <div className="flex-shrink-0">
         {/* Header */}
         <div className="p-4 pb-2">
           <h1 className="text-2xl font-bold mb-2">Chat with ElizaOS Agent</h1>
