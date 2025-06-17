@@ -1,3 +1,7 @@
 // --- Constants ---
 export const USER_NAME = "User";
-export const CHAT_SOURCE = "ai.eliza.how"; // Unique source identifier for this app
+
+// Dynamic source based on environment - falls back to API for generic usage
+export const CHAT_SOURCE = typeof window !== 'undefined' 
+  ? window.location.hostname || "api"
+  : process.env.NEXT_PUBLIC_APP_URL?.replace(/https?:\/\//, '') || "api";
