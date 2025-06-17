@@ -446,7 +446,7 @@ export const Chat = () => {
     <div className="min-h-screen w-full max-w-4xl mx-auto flex flex-col">
       {/* Header Section - Top/Middle */}
       <div className="flex-1 flex flex-col justify-center px-4">
-        <div className="text-center mb-8">
+        <div className="mb-8">
           <h1 className="text-2xl font-bold mb-2">Chat with ElizaOS Agent</h1>
           {query && (
             <div className="text-gray-600 text-base break-words overflow-wrap-anywhere word-break-break-all">
@@ -457,7 +457,7 @@ export const Chat = () => {
         </div>
 
         {/* Connection Status */}
-        <div className="text-center mb-4">
+        <div className="mb-4">
           {renderConnectionStatus()}
         </div>
 
