@@ -483,7 +483,7 @@ export const Chat = () => {
                 }}
               />
               {isAgentThinking && (
-                <div className="flex items-center gap-2 p-4 text-gray-600">
+                <div className="flex items-center gap-2 py-4 text-gray-600">
                   <LoadingSpinner />
                   <span>Agent is thinking...</span>
                 </div>
