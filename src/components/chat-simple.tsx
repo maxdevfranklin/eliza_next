@@ -462,7 +462,7 @@ export const Chat = () => {
         </div>
 
         {/* Chat Messages */}
-        <div className="flex-1 max-h-96 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto">
           {/* Only show history loading if we're connected and actually loading history */}
           {connectionStatus === 'connected' && isLoadingHistory ? (
             <div className="flex items-center justify-center h-32">
