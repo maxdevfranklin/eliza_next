@@ -646,7 +646,7 @@ export const Chat = ({ sessionId: propSessionId }: ChatProps = {}) => {
             </div>
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => router.push("/")}
+                onClick={() => createNewSession()}
                 color="blue"
               >
                 New Chat
