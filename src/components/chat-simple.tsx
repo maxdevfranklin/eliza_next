@@ -446,7 +446,8 @@ export const Chat = () => {
     <div className="min-h-screen w-full max-w-4xl mx-auto flex flex-col justify-end">
       {/* Chat Messages */}
       <div className="flex-shrink-0 max-h-96 overflow-y-auto px-4 mb-4">
-        {isLoadingHistory ? (
+        {/* Only show history loading if we're connected and actually loading history */}
+        {connectionStatus === 'connected' && isLoadingHistory ? (
           <div className="flex items-center justify-center h-32">
             <div className="flex items-center gap-2">
               <LoadingSpinner />
