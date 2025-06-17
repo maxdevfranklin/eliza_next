@@ -104,7 +104,7 @@ export const ChatSessions = ({ userId, currentQuery, showSwitcher = false }: Cha
       <div className="flex items-center justify-center py-8">
         <div className="flex items-center gap-2">
           <LoadingSpinner />
-          <span className="text-gray-600">Loading chat sessions...</span>
+          <span className="text-zinc-600 dark:text-zinc-400">Loading chat sessions...</span>
         </div>
       </div>
     );
@@ -123,7 +123,7 @@ export const ChatSessions = ({ userId, currentQuery, showSwitcher = false }: Cha
   if (sessions.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500 text-sm">
+        <p className="text-zinc-500 dark:text-zinc-400 text-sm">
           {showSwitcher ? 'No other chat sessions found' : 'No previous chat sessions'}
         </p>
       </div>
@@ -137,7 +137,7 @@ export const ChatSessions = ({ userId, currentQuery, showSwitcher = false }: Cha
   if (showSwitcher && filteredSessions.length === 0) {
     return (
       <div className="text-center py-4">
-        <p className="text-gray-500 text-sm">No other chat sessions found</p>
+        <p className="text-zinc-500 dark:text-zinc-400 text-sm">No other chat sessions found</p>
       </div>
     );
   }
@@ -145,13 +145,13 @@ export const ChatSessions = ({ userId, currentQuery, showSwitcher = false }: Cha
   return (
     <div className="space-y-3">
       {showSwitcher && (
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
           Switch to another conversation:
         </h3>
       )}
       
       {!showSwitcher && (
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
           Previous Conversations
         </h3>
       )}
@@ -161,19 +161,19 @@ export const ChatSessions = ({ userId, currentQuery, showSwitcher = false }: Cha
           <div
             key={session.id}
             onClick={() => handleSessionClick(session)}
-            className="group cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all duration-200"
+            className="group cursor-pointer bg-white dark:bg-zinc-950 border border-zinc-950/10 dark:border-white/10 rounded-lg p-4 hover:bg-zinc-950/[2.5%] dark:hover:bg-white/[2.5%] transition-all duration-200"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
+                <h4 className="font-medium text-zinc-900 dark:text-white text-sm group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors line-clamp-1">
                   {session.query}
                 </h4>
                 {session.preview && (
-                  <p className="text-gray-600 dark:text-gray-400 text-xs mt-1 line-clamp-2">
+                  <p className="text-zinc-600 dark:text-zinc-400 text-xs mt-1 line-clamp-2">
                     {session.isFromAgent ? '🤖 ' : ''}{session.preview}
                   </p>
                 )}
-                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-3 mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                   <span>{session.messageCount} message{session.messageCount !== 1 ? 's' : ''}</span>
                   <span>•</span>
                   <span>{formatTimeAgo(session.lastActivity)}</span>
@@ -181,7 +181,7 @@ export const ChatSessions = ({ userId, currentQuery, showSwitcher = false }: Cha
               </div>
               <div className="flex-shrink-0">
                 <svg 
-                  className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" 
+                  className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors" 
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
