@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
             userId: userId,
             agentId: AGENT_ID,
             sessionId: sessionId, // This ensures it only finds channels with this exact sessionId
+            initialMessage: initialMessage, // Pass the initial message to be stored in metadata
           }),
         },
       );

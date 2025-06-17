@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import { ChatMessages } from "@/components/chat-messages";
 import { TextareaWithActions } from "@/components/textarea-with-actions";
 import { ChatSessions } from "@/components/chat-sessions";
+import { Button } from "@/components/button";
 import { USER_NAME, CHAT_SOURCE } from "@/constants";
 import SocketIOManager, {
   ControlMessageData,
@@ -629,7 +630,7 @@ export const Chat = ({ sessionId: propSessionId }: ChatProps = {}) => {
   return (
     <div className="min-h-screen w-full max-w-4xl mx-auto flex flex-col mt-20">
       {/* Header Section - Top/Middle */}
-      <div className="flex-1 flex flex-col justify-center px-4">
+      <div className="flex-1 flex flex-col px-4 pb-32">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <div className="flex-1">
@@ -644,19 +645,20 @@ export const Chat = ({ sessionId: propSessionId }: ChatProps = {}) => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 onClick={() => router.push("/")}
-                className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                color="blue"
               >
                 New Chat
-              </button>
+              </Button>
               {sessionData && (
-                <button
+                <Button
                   onClick={() => setShowSessionSwitcher(!showSessionSwitcher)}
-                  className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                  plain
+                  color="blue"
                 >
                   {showSessionSwitcher ? "Hide Sessions" : "Switch Chat"}
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -667,7 +669,7 @@ export const Chat = ({ sessionId: propSessionId }: ChatProps = {}) => {
 
         {/* Session Switcher */}
         {showSessionSwitcher && userEntity && (
-          <div className="mb-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+          <div className="mb-6 bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4 border border-zinc-950/10 dark:border-white/10">
             <ChatSessions
               userId={userEntity}
               currentSessionId={sessionId}
@@ -711,8 +713,8 @@ export const Chat = ({ sessionId: propSessionId }: ChatProps = {}) => {
       </div>
 
       {/* Input Area - Fixed at Bottom */}
-      <div className="flex-shrink-0 p-4">
-        <div className="w-full">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-black z-10">
+        <div className="w-full max-w-4xl mx-auto">
           <TextareaWithActions
             input={input}
             onInputChange={(e) => setInput(e.target.value)}

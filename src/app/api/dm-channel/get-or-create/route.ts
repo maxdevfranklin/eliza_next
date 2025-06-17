@@ -7,6 +7,7 @@ interface GetOrCreateDMChannelRequest {
   userId: string;
   agentId: string;
   sessionId?: string; // Optional session ID for deterministic channel creation
+  initialMessage?: string; // Optional initial message for new sessions
 }
 
 interface DMChannelMetadata {
@@ -16,12 +17,13 @@ interface DMChannelMetadata {
   forAgent: string;
   createdAt: string;
   sessionId?: string;
+  initialMessage?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: GetOrCreateDMChannelRequest = await request.json();
-    const { userId, agentId, sessionId } = body;
+    const { userId, agentId, sessionId, initialMessage } = body;
 
     if (!userId || !agentId) {
       return NextResponse.json(
@@ -91,6 +93,10 @@ export async function POST(request: NextRequest) {
 
     if (sessionId) {
       metadata.sessionId = sessionId;
+    }
+
+    if (initialMessage) {
+      metadata.initialMessage = initialMessage;
     }
 
     // Create the DM channel via ElizaOS API
