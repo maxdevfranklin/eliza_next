@@ -154,6 +154,7 @@ class SocketIOManager extends EventAdapter {
   private resolveConnect: (() => void) | null = null;
   private activeChannels: Set<string> = new Set();
   private activeRooms: Set<string> = new Set(); // For backward compatibility
+  private activeSessionChannelId: string | null = null; // Current session for message filtering
   private entityId: string | null = null;
   private serverId: string | null = null;
 
@@ -261,8 +262,23 @@ class SocketIOManager extends EventAdapter {
       const isCentralizedChannel = data.channelId === "00000000-0000-0000-0000-000000000000" || 
                                    data.roomId === "00000000-0000-0000-0000-000000000000";
 
-      if (isActiveChannel || isActiveRoom || isCentralizedChannel) {
-        const context = isActiveChannel ? `channel ${data.channelId}` : 
+      // Filter by active session channel ID (following official client pattern)
+      const isCurrentSession = this.activeSessionChannelId && 
+                               (data.channelId === this.activeSessionChannelId || 
+                                data.roomId === this.activeSessionChannelId);
+
+      if (isActiveChannel || isActiveRoom || isCentralizedChannel || isCurrentSession) {
+        // Additional session filtering for centralized channel messages
+        if (isCentralizedChannel && this.activeSessionChannelId) {
+          // For central channel messages, only process if they match our active session
+          if (data.channelId !== this.activeSessionChannelId && data.roomId !== this.activeSessionChannelId) {
+            console.info(`[SocketIO] Filtering central channel message - not for active session ${this.activeSessionChannelId}`);
+            return;
+          }
+        }
+
+        const context = isCurrentSession ? `session ${this.activeSessionChannelId}` :
+                       isActiveChannel ? `channel ${data.channelId}` : 
                        isActiveRoom ? `room ${data.roomId}` : 
                        'centralized channel';
         console.info(`[SocketIO] Handling message for active ${context}`);
@@ -274,8 +290,8 @@ class SocketIOManager extends EventAdapter {
         });
       } else {
         console.warn(
-          `[SocketIO] Received message for inactive channel/room:`,
-          { channelId: data.channelId, roomId: data.roomId },
+          `[SocketIO] Received message for inactive channel/room/session:`,
+          { channelId: data.channelId, roomId: data.roomId, activeSession: this.activeSessionChannelId },
           "Active channels:", Array.from(this.activeChannels),
           "Active rooms:", Array.from(this.activeRooms)
         );
@@ -437,14 +453,16 @@ class SocketIOManager extends EventAdapter {
   /**
    * Send a message to a specific channel
    * @param message Message text to send
-   * @param channelId Channel ID to send the message to
+   * @param channelId Channel ID to send the message to (usually central bus)
    * @param source Source identifier (e.g., 'client_chat')
+   * @param sessionChannelId Optional session channel ID for filtering (following official client pattern)
    * @param serverId Optional server ID
    */
   public async sendChannelMessage(
     message: string,
     channelId: string,
     source: string,
+    sessionChannelId?: string,
     serverId?: string
   ): Promise<void> {
     if (!this.socket) {
@@ -458,17 +476,19 @@ class SocketIOManager extends EventAdapter {
     }
 
     const messageId = v4();
+    const finalChannelId = sessionChannelId || channelId; // Use session channel ID if provided
 
-    console.info(`[SocketIO] Sending message to channel ${channelId}`);
+    console.info(`[SocketIO] Sending message to channel ${channelId} with session ID ${finalChannelId}`);
 
-    // Emit message to server
+    // Emit message to server - always send to central bus but tag with session channel ID
     this.socket.emit("message", {
       type: SOCKET_MESSAGE_TYPE.SEND_MESSAGE,
       payload: {
         senderId: this.entityId,
         senderName: USER_NAME,
         message,
-        channelId,
+        channelId: finalChannelId, // Use session channel ID for proper routing
+        roomId: finalChannelId, // Keep for backward compatibility
         serverId: serverId || this.serverId,
         messageId,
         source,
@@ -482,7 +502,8 @@ class SocketIOManager extends EventAdapter {
       senderId: this.entityId || "",
       senderName: USER_NAME,
       text: message,
-      channelId,
+      channelId: finalChannelId, // Use session channel ID for filtering
+      roomId: finalChannelId, // Keep for backward compatibility
       createdAt: Date.now(),
       source,
       name: USER_NAME, // Required for ContentWithUser compatibility
@@ -604,6 +625,30 @@ class SocketIOManager extends EventAdapter {
    */
   public getServerId(): string | null {
     return this.serverId;
+  }
+
+  /**
+   * Set the active session channel ID for message filtering (following official client pattern)
+   * @param sessionChannelId The session channel ID to filter messages by
+   */
+  public setActiveSessionChannelId(sessionChannelId: string): void {
+    this.activeSessionChannelId = sessionChannelId;
+    console.info(`[SocketIO] Active session channel set to: ${sessionChannelId}`);
+  }
+
+  /**
+   * Get the current active session channel ID
+   */
+  public getActiveSessionChannelId(): string | null {
+    return this.activeSessionChannelId;
+  }
+
+  /**
+   * Clear the active session channel ID
+   */
+  public clearActiveSessionChannelId(): void {
+    this.activeSessionChannelId = null;
+    console.info(`[SocketIO] Active session channel cleared`);
   }
 
   /**

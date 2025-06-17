@@ -443,3 +443,116 @@ export const getServerStatus = async (): Promise<any> => {
     return null;
   }
 };
+
+// ====== DM CHANNEL MANAGEMENT ======
+
+interface DMChannel {
+  id: string;
+  name: string;
+  type: 'DM';
+  metadata: {
+    isDm: true;
+    user1: string;
+    user2: string;
+    forAgent: string;
+    createdAt: string;
+    sessionId?: string;
+    title?: string;
+  };
+  participants: string[];
+}
+
+/**
+ * Create a new DM channel
+ */
+export const createDMChannel = async (
+  userId: string,
+  agentId: string,
+  channelId?: string,
+  title?: string
+): Promise<DMChannel | null> => {
+  try {
+    const response = await fetch('/api/dm-channel/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        agentId,
+        channelId,
+        title,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('[API Client] Failed to create DM channel:', errorData);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.success ? data.channel : null;
+  } catch (error) {
+    console.error('[API Client] Error creating DM channel:', error);
+    return null;
+  }
+};
+
+/**
+ * Get or create a DM channel for a session
+ */
+export const getOrCreateDMChannel = async (
+  userId: string,
+  agentId: string,
+  sessionId?: string
+): Promise<{ channel: DMChannel; isNew: boolean } | null> => {
+  try {
+    const response = await fetch('/api/dm-channel/get-or-create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        agentId,
+        sessionId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('[API Client] Failed to get or create DM channel:', errorData);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.success ? { channel: data.channel, isNew: data.isNew } : null;
+  } catch (error) {
+    console.error('[API Client] Error getting or creating DM channel:', error);
+    return null;
+  }
+};
+
+/**
+ * List DM channels for a user and agent
+ */
+export const listDMChannels = async (
+  userId: string,
+  agentId: string
+): Promise<DMChannel[]> => {
+  try {
+    const response = await fetch(`/api/dm-channel/list?userId=${encodeURIComponent(userId)}&agentId=${encodeURIComponent(agentId)}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('[API Client] Failed to list DM channels:', errorData);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.success ? data.channels : [];
+  } catch (error) {
+    console.error('[API Client] Error listing DM channels:', error);
+    return [];
+  }
+};

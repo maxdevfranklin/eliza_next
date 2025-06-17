@@ -13,7 +13,7 @@ import SocketIOManager, {
   MessageBroadcastData,
 } from "@/lib/socketio-manager";
 import type { ChatMessage } from "@/types/chat-message";
-import { getRoomMemories, createRoom, pingServer } from "@/lib/api-client";
+import { getRoomMemories, pingServer, getOrCreateDMChannel } from "@/lib/api-client";
 import { generateQueryRoomId } from "@/lib/uuid-utils";
 
 // Simple spinner component
@@ -46,11 +46,27 @@ export const Chat = () => {
 
   // --- Environment Configuration ---
   const agentId = process.env.NEXT_PUBLIC_AGENT_ID;
-  const worldId = process.env.NEXT_PUBLIC_WORLD_ID || "00000000-0000-0000-0000-000000000000";
   const serverId = "00000000-0000-0000-0000-000000000000"; // Default server ID from ElizaOS
 
   // --- User Entity ---
   const [userEntity, setUserEntity] = useState<string | null>(null);
+
+  // --- State ---
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [inputDisabled, setInputDisabled] = useState<boolean>(false);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [, setCurrentDMChannel] = useState<any>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
+  const [isAgentThinking, setIsAgentThinking] = useState<boolean>(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [agentStatus, setAgentStatus] = useState<'checking' | 'ready' | 'error'>('checking');
+  const [showSessionSwitcher, setShowSessionSwitcher] = useState<boolean>(false);
+
+  // --- Refs ---
+  const initStartedRef = useRef(false);
+  const socketIOManager = SocketIOManager.getInstance();
 
   // Initialize user entity on client side only to avoid hydration mismatch
   useEffect(() => {
@@ -66,41 +82,10 @@ export const Chat = () => {
     }
   }, []);
 
-  // --- State ---
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [inputDisabled, setInputDisabled] = useState<boolean>(false);
-  const [roomId, setRoomId] = useState<string | null>(null);
-  const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
-  const [isAgentThinking, setIsAgentThinking] = useState<boolean>(false);
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
-  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [agentStatus, setAgentStatus] = useState<'checking' | 'ready' | 'error'>('checking');
-  const [showSessionSwitcher, setShowSessionSwitcher] = useState<boolean>(false);
-
-  // --- Refs ---
-  const initStartedRef = useRef(false);
-  const socketIOManager = SocketIOManager.getInstance();
-
-  // Check if environment is properly configured
-  if (!agentId) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center p-6">
-          <h2 className="text-xl font-semibold mb-2">Configuration Error</h2>
-          <p className="text-gray-600 mb-4">
-            NEXT_PUBLIC_AGENT_ID is not configured in environment variables.
-          </p>
-          <p className="text-sm text-gray-500">
-            Please check your .env file and ensure NEXT_PUBLIC_AGENT_ID is set.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   // --- Check Server Status ---
   useEffect(() => {
+    if (!agentId) return; // Guard against missing config
+    
     const checkServer = async () => {
       try {
         console.log("[Chat] Checking server status...");
@@ -118,7 +103,7 @@ export const Chat = () => {
     };
 
     checkServer();
-  }, []);
+  }, [agentId]);
 
   // --- Generate Room ID and Reset Session State ---
   useEffect(() => {
@@ -282,6 +267,10 @@ export const Chat = () => {
     // Join the room and also join as channel if we have a channelId
     socketIOManager.joinRoom(roomId);
     
+    // Set the active session channel ID for message filtering
+    socketIOManager.setActiveSessionChannelId(roomId);
+    console.log("[Chat] Set active session channel ID:", roomId);
+    
     // Join the centralized bus channel (always 00000000-0000-0000-0000-000000000000)
     const centralChannelId = "00000000-0000-0000-0000-000000000000";
     console.log("[Chat] Joining centralized bus channel:", centralChannelId);
@@ -294,8 +283,9 @@ export const Chat = () => {
       socketIOManager.off('messageComplete', handleMessageComplete);
       socketIOManager.leaveRoom(roomId);
       socketIOManager.leaveChannel("00000000-0000-0000-0000-000000000000");
+      socketIOManager.clearActiveSessionChannelId();
     };
-  }, [connectionStatus, roomId, socketIOManager]);
+  }, [connectionStatus, roomId, agentId, userEntity, socketIOManager]);
 
   // --- Send Message Logic ---
   const sendMessage = useCallback(
@@ -332,12 +322,19 @@ export const Chat = () => {
       setIsAgentThinking(true);
       setInputDisabled(true);
 
-      // Send message via socket to centralized bus channel
+      // Send message via socket - use central channel but tag with session channel ID
       const centralChannelId = "00000000-0000-0000-0000-000000000000";
-      console.log("[Chat] Sending message to central channel:", { messageText, centralChannelId, source: CHAT_SOURCE });
+      const sessionChannelId = roomId; // Use room ID as session channel ID
       
-      // Send to centralized bus channel
-      socketIOManager.sendChannelMessage(messageText, centralChannelId, CHAT_SOURCE);
+      console.log("[Chat] Sending message to central channel with session ID:", { 
+        messageText, 
+        centralChannelId, 
+        sessionChannelId, 
+        source: CHAT_SOURCE 
+      });
+      
+      // Send to centralized bus channel but tag with session channel ID
+      socketIOManager.sendChannelMessage(messageText, centralChannelId, CHAT_SOURCE, sessionChannelId);
       
       // Add a timeout to re-enable input if no response comes (safety measure)
       setTimeout(() => {
@@ -351,16 +348,37 @@ export const Chat = () => {
 
   // --- Load Message History and Send Initial Query ---
   useEffect(() => {
-    if (!roomId || !agentId || connectionStatus !== 'connected' || initStartedRef.current) {
+    if (!roomId || !agentId || !userEntity || connectionStatus !== 'connected' || initStartedRef.current) {
       return;
     }
     
     initStartedRef.current = true;
     setIsLoadingHistory(true);
 
-    console.log(`[Chat] Loading message history for room: ${roomId}`);
+    console.log(`[Chat] Initializing session for room: ${roomId}`);
 
-    getRoomMemories(agentId, roomId, 50)
+    // First, create or get DM channel record for this session
+    const initializeSession = async () => {
+      try {
+        console.log(`[Chat] Creating/getting DM channel for session: ${roomId}`);
+        const dmChannelResult = await getOrCreateDMChannel(userEntity, agentId, roomId);
+        
+        if (dmChannelResult) {
+          setCurrentDMChannel(dmChannelResult.channel);
+          console.log(`[Chat] DM channel ${dmChannelResult.isNew ? 'created' : 'found'}:`, dmChannelResult.channel.id);
+        } else {
+          console.warn(`[Chat] Failed to create/get DM channel for session: ${roomId}`);
+        }
+      } catch (error) {
+        console.error(`[Chat] Error creating/getting DM channel:`, error);
+      }
+
+      // Load message history
+      console.log(`[Chat] Loading message history for room: ${roomId}`);
+      return getRoomMemories(agentId, roomId, 50);
+    };
+
+    initializeSession()
       .then((loadedMessages) => {
         console.log(`[Chat] Loaded ${loadedMessages.length} messages from history`);
         setMessages(loadedMessages);
@@ -389,7 +407,7 @@ export const Chat = () => {
       .finally(() => {
         setIsLoadingHistory(false);
       });
-  }, [roomId, agentId, connectionStatus, query, sendMessage]);
+  }, [roomId, agentId, userEntity, connectionStatus, query, sendMessage]);
 
   // --- Handle Form Submit ---
   const handleSubmit = useCallback(
@@ -474,6 +492,23 @@ export const Chat = () => {
     return null;
   };
 
+  // Check if environment is properly configured
+  if (!agentId) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center p-6">
+          <h2 className="text-xl font-semibold mb-2">Configuration Error</h2>
+          <p className="text-gray-600 mb-4">
+            NEXT_PUBLIC_AGENT_ID is not configured in environment variables.
+          </p>
+          <p className="text-sm text-gray-500">
+            Please check your .env file and ensure NEXT_PUBLIC_AGENT_ID is set.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-full max-w-4xl mx-auto flex flex-col mt-20">
       {/* Header Section - Top/Middle */}
@@ -493,7 +528,7 @@ export const Chat = () => {
           {query && (
             <div className="text-gray-600 text-base break-words overflow-wrap-anywhere word-break-break-all">
               <span>Query: </span>
-              <span className="font-medium">"{query}"</span>
+              <span className="font-medium">&ldquo;{query}&rdquo;</span>
             </div>
           )}
         </div>
