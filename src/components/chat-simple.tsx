@@ -443,42 +443,10 @@ export const Chat = () => {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-4xl mx-auto flex flex-col justify-end">
-      {/* Chat Messages */}
-      <div className="flex-shrink-0 max-h-96 overflow-y-auto px-4 mb-4">
-        {/* Only show history loading if we're connected and actually loading history */}
-        {connectionStatus === 'connected' && isLoadingHistory ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="flex items-center gap-2">
-              <LoadingSpinner />
-              <span className="text-gray-600">Loading conversation history...</span>
-            </div>
-          </div>
-        ) : (
-          <>
-            <ChatMessages 
-              messages={messages} 
-              citationsMap={{}}
-              followUpPromptsMap={{}}
-              onFollowUpClick={(prompt) => {
-                // Handle follow-up prompts by setting as new input
-                setInput(prompt);
-              }}
-            />
-            {isAgentThinking && (
-              <div className="flex items-center gap-2 p-4 text-gray-600">
-                <LoadingSpinner />
-                <span>Agent is thinking...</span>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Bottom Section - Header, Status, and Input */}
-      <div className="flex-shrink-0">
-        {/* Header */}
-        <div className="p-4 pb-2">
+    <div className="min-h-screen w-full max-w-4xl mx-auto flex flex-col">
+      {/* Header Section - Top/Middle */}
+      <div className="flex-1 flex flex-col justify-center px-4">
+        <div className="text-center mb-8">
           <h1 className="text-2xl font-bold mb-2">Chat with ElizaOS Agent</h1>
           {query && (
             <div className="text-gray-600 text-base break-words overflow-wrap-anywhere word-break-break-all">
@@ -489,25 +457,56 @@ export const Chat = () => {
         </div>
 
         {/* Connection Status */}
-        <div className="px-4">
+        <div className="text-center mb-4">
           {renderConnectionStatus()}
         </div>
 
-        {/* Input Area */}
-        <div className="p-4 pt-2">
-          <div className="w-full">
-            <TextareaWithActions
-              input={input}
-              onInputChange={(e) => setInput(e.target.value)}
-              onSubmit={handleSubmit}
-              isLoading={isAgentThinking || inputDisabled || connectionStatus !== 'connected'}
-              placeholder={
-                connectionStatus === 'connected' 
-                  ? "Type your message..." 
-                  : "Connecting..."
-              }
-            />
-          </div>
+        {/* Chat Messages */}
+        <div className="flex-1 max-h-96 overflow-y-auto">
+          {/* Only show history loading if we're connected and actually loading history */}
+          {connectionStatus === 'connected' && isLoadingHistory ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="flex items-center gap-2">
+                <LoadingSpinner />
+                <span className="text-gray-600">Loading conversation history...</span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <ChatMessages 
+                messages={messages} 
+                citationsMap={{}}
+                followUpPromptsMap={{}}
+                onFollowUpClick={(prompt) => {
+                  // Handle follow-up prompts by setting as new input
+                  setInput(prompt);
+                }}
+              />
+              {isAgentThinking && (
+                <div className="flex items-center gap-2 p-4 text-gray-600">
+                  <LoadingSpinner />
+                  <span>Agent is thinking...</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Input Area - Fixed at Bottom */}
+      <div className="flex-shrink-0 p-4">
+        <div className="w-full">
+          <TextareaWithActions
+            input={input}
+            onInputChange={(e) => setInput(e.target.value)}
+            onSubmit={handleSubmit}
+            isLoading={isAgentThinking || inputDisabled || connectionStatus !== 'connected'}
+            placeholder={
+              connectionStatus === 'connected' 
+                ? "Type your message..." 
+                : "Connecting..."
+            }
+          />
         </div>
       </div>
 
