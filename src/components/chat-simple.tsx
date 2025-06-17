@@ -443,63 +443,73 @@ export const Chat = () => {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto p-4">
-      {/* Header */}
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold mb-2">Chat with ElizaOS Agent</h1>
-        {query && (
-          <p className="text-gray-600 text-sm">
-            Query: <span className="font-medium">"{query}"</span>
-          </p>
-        )}
-      </div>
-
-      {/* Connection Status */}
-      {renderConnectionStatus()}
-
-      {/* Chat Messages */}
-      <div className="flex-1 min-h-0">
-        {isLoadingHistory ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="flex items-center gap-2">
-              <LoadingSpinner />
-              <span className="text-gray-600">Loading conversation history...</span>
-            </div>
-          </div>
-        ) : (
-          <>
-            <ChatMessages 
-              messages={messages} 
-              citationsMap={{}}
-              followUpPromptsMap={{}}
-              onFollowUpClick={(prompt) => {
-                // Handle follow-up prompts by setting as new input
-                setInput(prompt);
-              }}
-            />
-            {isAgentThinking && (
-              <div className="flex items-center gap-2 p-4 text-gray-600">
+    <div className="relative h-full w-full max-w-4xl mx-auto">
+      {/* Chat Messages - Scrollable area that takes remaining space */}
+      <div className="absolute inset-0 pb-80 overflow-y-auto">
+        <div className="px-4 pt-4">
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="flex items-center gap-2">
                 <LoadingSpinner />
-                <span>Agent is thinking...</span>
+                <span className="text-gray-600">Loading conversation history...</span>
               </div>
-            )}
-          </>
-        )}
+            </div>
+          ) : (
+            <>
+              <ChatMessages 
+                messages={messages} 
+                citationsMap={{}}
+                followUpPromptsMap={{}}
+                onFollowUpClick={(prompt) => {
+                  // Handle follow-up prompts by setting as new input
+                  setInput(prompt);
+                }}
+              />
+              {isAgentThinking && (
+                <div className="flex items-center gap-2 p-4 text-gray-600">
+                  <LoadingSpinner />
+                  <span>Agent is thinking...</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Input Area */}
-      <div className="mt-4">
-        <TextareaWithActions
-          input={input}
-          onInputChange={(e) => setInput(e.target.value)}
-          onSubmit={handleSubmit}
-          isLoading={isAgentThinking || inputDisabled || connectionStatus !== 'connected'}
-          placeholder={
-            connectionStatus === 'connected' 
-              ? "Type your message..." 
-              : "Connecting..."
-          }
-        />
+      {/* Bottom Section - Absolutely positioned at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 bg-inherit">
+        {/* Header */}
+        <div className="p-4 pb-2">
+          <h1 className="text-2xl font-bold mb-2">Chat with ElizaOS Agent</h1>
+          {query && (
+            <div className="text-gray-600 text-sm break-words overflow-wrap-anywhere word-break-break-all">
+              <span>Query: </span>
+              <span className="font-medium">"{query}"</span>
+            </div>
+          )}
+        </div>
+
+        {/* Connection Status */}
+        <div className="px-4">
+          {renderConnectionStatus()}
+        </div>
+
+        {/* Input Area */}
+        <div className="p-4 pt-2">
+          <div className="w-full">
+            <TextareaWithActions
+              input={input}
+              onInputChange={(e) => setInput(e.target.value)}
+              onSubmit={handleSubmit}
+              isLoading={isAgentThinking || inputDisabled || connectionStatus !== 'connected'}
+              placeholder={
+                connectionStatus === 'connected' 
+                  ? "Type your message..." 
+                  : "Connecting..."
+              }
+            />
+          </div>
+        </div>
       </div>
 
       {/* Debug Info (Only when NEXT_PUBLIC_DEBUG is enabled) */}
