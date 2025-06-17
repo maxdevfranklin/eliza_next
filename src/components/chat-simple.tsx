@@ -502,8 +502,8 @@ export const Chat = () => {
         />
       </div>
 
-      {/* Debug Info (Development only) */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* Debug Info (Only when NEXT_PUBLIC_DEBUG is enabled) */}
+      {process.env.NEXT_PUBLIC_DEBUG === 'true' && (
         <div className="mt-4 p-2 bg-gray-100 rounded text-xs text-gray-600">
           <div>Agent ID: {agentId}</div>
           <div>Room ID: {roomId}</div>

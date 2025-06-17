@@ -62,6 +62,9 @@ NEXT_PUBLIC_WORLD_ID=00000000-0000-0000-0000-000000000000
 # Optional API Authentication
 NEXT_PUBLIC_API_KEY=your-api-key-if-needed
 
+# Debug Mode (shows debug panel with connection details)
+# NEXT_PUBLIC_DEBUG=true
+
 # Repository Context (Optional)
 REPO_DIR_NAME=elizaos
 REPO_URL=https://github.com/elizaos/eliza.git
@@ -157,12 +160,18 @@ The app provides CORS-friendly proxy endpoints:
 
 ### Debug Mode
 
-Development builds include comprehensive debugging:
+Enable the debug panel by setting `NEXT_PUBLIC_DEBUG=true` in your `.env` file:
 
+```env
+NEXT_PUBLIC_DEBUG=true
+```
+
+Debug mode provides:
+
+- **Debug Panel**: Agent ID, Room ID, User Entity, connection states
 - **Connection Status**: Real-time connection state display
 - **Agent Status**: Participation setup progress
-- **Message Logs**: Full message flow in browser console
-- **Debug Panel**: Agent ID, Room ID, connection state
+- **Message Logs**: Full message flow in browser console (always available)
 
 ### Testing
 
