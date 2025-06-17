@@ -480,7 +480,7 @@ export const Chat = () => {
         <div className="p-4 pb-2">
           <h1 className="text-2xl font-bold mb-2">Chat with ElizaOS Agent</h1>
           {query && (
-            <div className="text-gray-600 text-sm break-words overflow-wrap-anywhere word-break-break-all">
+            <div className="text-gray-600 text-base break-words overflow-wrap-anywhere word-break-break-all">
               <span>Query: </span>
               <span className="font-medium">"{query}"</span>
             </div>
