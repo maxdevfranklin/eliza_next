@@ -118,18 +118,26 @@ export const Chat = () => {
     checkServer();
   }, []);
 
-  // --- Generate Room ID ---
+  // --- Generate Room ID and Reset Session State ---
   useEffect(() => {
     if (!userEntity || !agentId) return;
     
+    // Reset session state for new query/conversation
+    initStartedRef.current = false;
+    setMessages([]);
+    setIsLoadingHistory(false);
+    setIsAgentThinking(false);
+    
     if (query) {
-      // Generate a room ID based on the query
+      // Generate a unique room ID for each query to create isolated sessions
       const queryRoomId = generateQueryRoomId(userEntity, query);
       setRoomId(queryRoomId);
-      console.log(`[Chat] Generated room ID: ${queryRoomId} for query: "${query}"`);
+      console.log(`[Chat] Generated unique room ID: ${queryRoomId} for query: "${query}"`);
+      console.log(`[Chat] This creates a new isolated chat session for this specific query`);
     } else {
-      // Use a default room for general chat
-      setRoomId(`${agentId}-${userEntity}`);
+      // Use a default room for general chat (no query)
+      setRoomId(`${agentId}-${userEntity}-general`);
+      console.log(`[Chat] Using general chat room (no specific query)`);
     }
   }, [query, userEntity, agentId]);
 
@@ -355,12 +363,14 @@ export const Chat = () => {
         console.log(`[Chat] Loaded ${loadedMessages.length} messages from history`);
         setMessages(loadedMessages);
         
-        // If there's a query and no existing messages, send it as first message
+        // If there's a query and no existing messages, send it as first message for new session
         if (query && loadedMessages.length === 0) {
-          console.log(`[Chat] Sending query as first message: ${query}`);
+          console.log(`[Chat] New session detected - sending query as first message: ${query}`);
           setTimeout(() => {
             sendMessage(query);
           }, 500); // Small delay to ensure everything is ready
+        } else if (query && loadedMessages.length > 0) {
+          console.log(`[Chat] Resuming existing session with ${loadedMessages.length} messages for query: ${query}`);
         }
       })
       .catch((error) => {
