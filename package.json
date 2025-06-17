@@ -86,9 +86,11 @@
     "typescript": "^5"
   },
   "scripts": {
-    "start": "tsup && concurrently \"elizaos start\" \"next start -p 4000\"",
-    "dev": "tsup && concurrently \"elizaos dev\" \"next dev -p 4000\"",
+    "start": "next start -p 4000",
+    "dev": "next dev -p 4000",
+    "dev:with-agent": "tsup && concurrently \"elizaos dev\" \"next dev -p 4000\"",
     "build": "tsup && next build",
+    "build:next-only": "next build",
     "lint": "prettier --write ./src",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
