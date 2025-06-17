@@ -390,24 +390,17 @@ export const Chat = () => {
     if (serverStatus === 'offline') {
       return (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center mt-0.5">
-              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-red-800 dark:text-red-200 font-semibold text-sm">Connection Failed</h3>
-              <p className="text-red-700 dark:text-red-300 text-sm mt-1 leading-relaxed">
-                Unable to establish connection to ElizaOS server at{' '}
-                <code className="bg-red-100 dark:bg-red-800/50 px-1.5 py-0.5 rounded text-xs font-mono">
-                  {process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}
-                </code>
-              </p>
-              <p className="text-red-600 dark:text-red-400 text-xs mt-2">
-                Please ensure the server is running and accessible.
-              </p>
-            </div>
+          <div>
+            <h3 className="text-red-800 dark:text-red-200 font-semibold text-sm">Connection Failed</h3>
+            <p className="text-red-700 dark:text-red-300 text-sm mt-1 leading-relaxed">
+              Unable to establish connection to ElizaOS server at{' '}
+              <code className="bg-red-100 dark:bg-red-800/50 px-1.5 py-0.5 rounded text-xs font-mono">
+                {process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}
+              </code>
+            </p>
+            <p className="text-red-600 dark:text-red-400 text-xs mt-2">
+              Please ensure the server is running and accessible.
+            </p>
           </div>
         </div>
       );
