@@ -287,7 +287,7 @@ export const Chat = () => {
     };
   }, [connectionStatus, roomId, socketIOManager]);
 
-  // --- Load Message History ---
+  // --- Load Message History and Send Initial Query ---
   useEffect(() => {
     if (!roomId || !agentId || connectionStatus !== 'connected' || initStartedRef.current) {
       return;
@@ -302,15 +302,30 @@ export const Chat = () => {
       .then((loadedMessages) => {
         console.log(`[Chat] Loaded ${loadedMessages.length} messages from history`);
         setMessages(loadedMessages);
+        
+        // If there's a query and no existing messages, send it as first message
+        if (query && loadedMessages.length === 0) {
+          console.log(`[Chat] Sending query as first message: ${query}`);
+          setTimeout(() => {
+            sendMessage(query);
+          }, 500); // Small delay to ensure everything is ready
+        }
       })
       .catch((error) => {
         console.error("[Chat] Failed to load message history:", error);
-        // Continue even if history loading fails
+        
+        // Even if history loading fails, send query if present
+        if (query) {
+          console.log(`[Chat] Sending query as first message after history load error: ${query}`);
+          setTimeout(() => {
+            sendMessage(query);
+          }, 500);
+        }
       })
       .finally(() => {
         setIsLoadingHistory(false);
       });
-  }, [roomId, agentId, connectionStatus]);
+  }, [roomId, agentId, connectionStatus, query, sendMessage]);
 
   // --- Send Message Logic ---
   const sendMessage = useCallback(
