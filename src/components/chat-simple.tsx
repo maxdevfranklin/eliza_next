@@ -647,7 +647,7 @@ export const Chat = ({ sessionId: propSessionId }: ChatProps = {}) => {
             <div className="flex items-center gap-2">
               <Button
                 onClick={() => createNewSession()}
-                color={"blue" as keyof typeof styles.colors }
+                color={style_colors.blue}
               >
                 New Chat
               </Button>
