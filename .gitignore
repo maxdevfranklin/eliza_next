@@ -60,3 +60,6 @@ cache/
 ./data/
 ./models/
 elizaos/
+.elizadb/
+
+bun.lock
