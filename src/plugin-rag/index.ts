@@ -1,4 +1,3 @@
-import { knowledgeProvider } from "@/plugin-rag/providers/knowledge";
 import {
   type Action,
   type ActionEventPayload,
@@ -14,6 +13,8 @@ import {
   KnowledgeItem,
   logger,
   type Media,
+  type Memory,
+  MemoryType,
   type MessagePayload,
   type MessageReceivedHandlerParams,
   ModelType,
@@ -267,11 +268,7 @@ const messageReceivedHandler = async ({
         runtime.createMemory(message, "messages"),
       ]);
 
-      const state = await runtime.composeState(
-        message,
-        [],
-        ["KNOWLEDGE", "RECENT_MESSAGES"],
-      );
+      const state = await runtime.composeState(message, ["KNOWLEDGE", "RECENT_MESSAGES"]);
 
       const prompt = composePromptFromState({
         state,
@@ -293,7 +290,7 @@ const messageReceivedHandler = async ({
           prompt,
         });
 
-        logger.debug("*** Raw LLM Response ***\n", response);
+        logger.debug(`*** Raw LLM Response ***\n${response}`);
 
         // Attempt to parse the XML response
         responseContent = extractResponseText(response);
@@ -392,7 +389,7 @@ const syncSingleUser = async (
   try {
     const entity = await runtime.getEntityById(entityId);
     logger.info(
-      `Syncing user: ${entity?.metadata[source]?.username || entityId}`,
+      `Syncing user: ${(entity?.metadata[source] as any)?.username || entityId}`,
     );
 
     // Ensure we're not using WORLD type and that we have a valid channelId
@@ -407,10 +404,10 @@ const syncSingleUser = async (
     await runtime.ensureConnection({
       entityId,
       roomId,
-      userName: entity?.metadata[source].username || entityId,
+      userName: (entity?.metadata[source] as any)?.username || entityId,
       name:
-        entity?.metadata[source].name ||
-        entity?.metadata[source].username ||
+        (entity?.metadata[source] as any)?.name ||
+        (entity?.metadata[source] as any)?.username ||
         `User${entityId}`,
       source,
       channelId,
@@ -482,8 +479,8 @@ const handleServerSync = async ({
               await runtime.ensureConnection({
                 entityId: entity.id,
                 roomId: firstRoomUserIsIn.id,
-                userName: entity.metadata[source].username,
-                name: entity.metadata[source].name,
+                userName: (entity.metadata[source] as any).username,
+                name: (entity.metadata[source] as any).name,
                 source: source,
                 channelId: firstRoomUserIsIn.channelId,
                 serverId: world.serverId,
@@ -702,14 +699,14 @@ function getFilesRecursively(dir: string, extensions: string[]): string[] {
       try {
         return getFilesRecursively(folder, extensions);
       } catch (error) {
-        logger.warn(`Error accessing folder ${folder}:`, error);
+        logger.warn(`Error accessing folder ${folder}: ${error}`);
         return [];
       }
     });
 
     return [...files, ...subFiles];
   } catch (error) {
-    logger.warn(`Error reading directory ${dir}:`, error);
+    logger.warn(`Error reading directory ${dir}: ${error}`);
     return [];
   }
 }
@@ -733,7 +730,7 @@ function loadDocumentation(directoryPath: string): string[] {
           const content = fs.readFileSync(filePath, "utf-8");
           return content;
         } catch (error) {
-          logger.warn(`Error reading file ${filePath}:`, error);
+          logger.warn(`Error reading file ${filePath}: ${error}`);
           return "";
         }
       })
@@ -880,10 +877,22 @@ export const ragPlugin: Plugin = {
                   modelContextSize: 64000,
                 };
 
-                await runtime.addKnowledge(
-                  knowledgeItem,
-                  defaultKnowledgeOptions,
-                );
+                // Store as memory instead of using deprecated addKnowledge
+                const memory: Memory = {
+                  id: knowledgeItem.id,
+                  entityId: runtime.agentId,
+                  roomId: createUniqueUuid(runtime, "knowledge"),
+                  content: knowledgeItem.content,
+                  createdAt: Date.now(),
+                  metadata: {
+                    type: MemoryType.DOCUMENT,
+                    source: "documentation",
+                  },
+                };
+                
+                // Create memory and add embeddings for searchability
+                await runtime.createMemory(memory, "knowledge");
+                await runtime.addEmbeddingToMemory(memory);
                 addedCount++;
               } catch (addError) {
                 logger.error(`Failed to add knowledge item: ${addError}`);
@@ -910,7 +919,7 @@ export const ragPlugin: Plugin = {
       }
     }, 5000);
   },
-  providers: [knowledgeProvider, recentMessagesProvider],
+  providers: [recentMessagesProvider],
 };
 
 export default ragPlugin;

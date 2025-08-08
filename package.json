@@ -35,6 +35,7 @@
     "@elizaos/core": "^1.0.9",
     "@elizaos/plugin-anthropic": "^1.0.3",
     "@elizaos/plugin-groq": "^1.0.4",
+    "@elizaos/plugin-knowledge": "1.2.1",
     "@elizaos/plugin-openai": "^1.0.4",
     "@elizaos/plugin-sql": "^1.0.9",
     "@hapi/shot": "^6.0.1",
@@ -66,23 +67,24 @@
     "zod": "3.24.2"
   },
   "devDependencies": {
-    "tsup": "8.4.0",
-    "prettier": "3.5.3",
-    "vitest": "2.1.5",
-    "@vitest/coverage-v8": "2.1.5",
     "@tailwindcss/typography": "^0.5.15",
     "@types/bun": "^1.1.14",
     "@types/node": "^22.15.3",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@typescript-eslint/parser": "^8.15.0",
+    "@vitest/coverage-v8": "2.1.5",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-plugin-import": "^2.29.1",
     "postcss": "^8",
+    "prettier": "3.5.3",
+    "sharp": "^0.34.3",
     "tailwindcss": "^4.0.0-beta.6",
-    "typescript": "^5"
+    "tsup": "8.4.0",
+    "typescript": "^5",
+    "vitest": "2.1.5"
   },
   "scripts": {
     "start": "next start -p 4000",

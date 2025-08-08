@@ -5,6 +5,7 @@ import type { Character } from "@elizaos/core";
 import { ragPlugin } from "@/plugin-rag";
 import { groqPlugin } from "@/plugin-groq";
 import { openaiPlugin } from "@elizaos/plugin-openai";
+import { knowledgePlugin } from "@elizaos/plugin-knowledge";
 
 /**
  * A character object representing Eddy, a developer support agent for ElizaOS.
@@ -103,7 +104,7 @@ const character: Partial<Character> = {
 
 const devRel = {
   character,
-  plugins: [groqPlugin, openaiPlugin, ragPlugin],
+  plugins: [groqPlugin, openaiPlugin, ragPlugin, knowledgePlugin],
 };
 
 export const project = {
